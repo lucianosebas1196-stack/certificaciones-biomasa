@@ -1,0 +1,125 @@
+CERTIFICACIONES DE BIOMASA - VERSIÓN WEB
+=======================================
+
+Qué es: el mismo programa del cuaderno de Colab, pero como una página web que corre en tu PC.
+  - servidor.py      → la API (el "motor": lee el maestro, calcula, genera PDF y Excel)
+  - index.html       → la página que ves en el navegador
+  - cert_biomasa.py y editor_colab.py → el motor de cálculo (los mismos del cuaderno)
+  - config_proveedores.xlsx → CUIT, precios, frecuencia, reglas especiales por proveedor
+
+Poné TODOS estos archivos en una misma carpeta.
+
+Cómo se abre (Windows, con Python instalado):
+  1. Doble clic en INICIAR_WEB.bat (la primera vez instala lo necesario; tarda 1-2 minutos).
+  2. Se abre solo el navegador en http://localhost:8000
+     (si no se abre, escribí esa dirección en Chrome o Edge).
+  3. Para cerrar: cerrá la ventana negra (o Ctrl+C).
+
+Cómo se usa:
+  1. Responsable: tu nombre (arriba a la derecha).
+  2. Archivos: arrastrá el maestro .xlsb, la planilla de calidad y el config (y el estado si retomás).
+  3. Qué certificar: mes, último día de la 1ª quincena, períodos y proveedor (o Todos) → "Armar certificaciones".
+  4. Hacé clic en un proveedor para ver el detalle: humedad % y granulometría % de cada camión,
+     descuentos editables (celeste), precios editables, CUIT y frecuencia. "Guardar cambios".
+  5. "Confirmar y generar PDF + Excel" (uno) o "Certificar todos" (todos de una vez).
+  6. Descargas: PDF / Excel en cada fila, o el menú "Descargar todas juntas":
+       - Un solo PDF con todas las certificaciones (con marcadores para saltar a cada proveedor)
+       - Un solo Excel: índice con totales + una hoja por certificación
+       - Todos los PDF y Excel sueltos en un .zip (carpetas PDF y EXCEL)
+       - o cada PDF / cada Excel por separado
+     Siempre baja lo que está en pantalla (período y proveedor elegidos) y solo lo confirmado.
+     "Config" baja el config actualizado (con la numeración correlativa).
+
+Imágenes personalizadas: botón "🖼 Imágenes" (arriba a la derecha).
+  - Logo del programa: se ve arriba a la izquierda y en la pestaña del navegador.
+  - Fondo del encabezado: una foto (por ejemplo del parque) detrás del título, con un velo verde para que se lea.
+  - Fondo de la página: el logo o una imagen, muy suave detrás de todo (marca de agua).
+  - Color del programa: elegí uno, o "Usar el color del logo" (por ejemplo el color de la marca de tu empresa).
+  - Logo de las certificaciones: el que sale en los PDF y Excel nuevos (las ya confirmadas no cambian).
+  PNG, JPG o WEBP de hasta 5 MB; se guardan en la carpeta "imagenes" y las ven todas las PC.
+  "Quitar" vuelve a lo de siempre.
+
+Todo lo generado queda también en la carpeta "trabajo" junto a servidor.py.
+La página es solo para tu PC (no se publica en internet).
+
+SEGURIDAD
+---------
+- No usa ninguna API externa ni clave de terceros: la "API" es servidor.py y corre en tu PC.
+  No manda datos a internet (solo la primera vez descarga las librerías de Python).
+- Por defecto solo se puede abrir desde tu PC (dirección 127.0.0.1). Nadie de la red ni de internet entra.
+- Un solo cambio a la vez: si tocás "Confirmar" dos veces seguidas, usa un solo número (no se saltea ni se repite).
+- Solo acepta archivos .xlsb, .xlsx y .json.
+- Si cerrás el programa, al volver a abrirlo retoma los archivos y las certificaciones confirmadas
+  (carpeta "trabajo"). El config que se va actualizando (CUIT, precios, numeración) queda en
+  trabajo\config_proveedores.xlsx y tiene respaldos automáticos en trabajo\config_respaldos.
+- Copia de seguridad: copiá de vez en cuando la carpeta "trabajo" a un pendrive o a Drive.
+
+USO DESDE VARIAS PC DE LA RED (5, 10 o más)
+-------------------------------------------
+Una sola PC hace de SERVIDOR (tiene los archivos y genera los PDF/Excel). Las demás solo abren el navegador:
+no se instala nada en ellas.
+
+PC servidor (una sola vez):
+  1. Una PC que quede prendida en horario de trabajo y conectada por cable a la red.
+     Recomendado: 8 GB de RAM o más, disco SSD, Windows 10/11 y Python 3.11 o más nuevo.
+  2. Copiá esta carpeta completa (por ejemplo a C:\Certificaciones).
+  3. Primero descomprimí el zip (clic derecho → "Extraer todo"). No abras los .bat desde adentro del zip.
+     La primera vez que abras INICIAR_WEB_RED.bat te pide crear el usuario ADMINISTRADOR
+     (usuario, nombre y contraseña). Con ese usuario entrás y, en 👥 Usuarios, creás uno para cada persona.
+  4. ABRIR_FIREWALL.bat → clic derecho → Ejecutar como administrador
+     (abre el puerto 8000 solo para la red de la empresa, no para internet).
+  5. INICIO_AUTOMATICO.bat → clic derecho → Ejecutar como administrador
+     (arranca solo al iniciar sesión y evita que la PC se suspenda enchufada).
+  6. Pedile a sistemas una IP fija para esa PC (o una "reserva DHCP"), así la dirección no cambia.
+  7. Doble clic en INICIAR_WEB_RED.bat. La ventana negra muestra las direcciones para las otras PC, p. ej.:
+        http://PC-BALANZA:8000      o      http://192.168.1.50:8000
+     Esa ventana tiene que quedar abierta (se puede minimizar).
+
+Cada una de las otras PC:
+  1. Abrir Chrome o Edge y entrar a la dirección que mostró el servidor.
+  2. Cada persona entra con SU usuario y contraseña (la primera vez el programa le pide cambiarla).
+     Lo más fácil: doble clic en PARA_LAS_OTRAS_PC\INSTALAR_ACCESO_CERTIFICACIONES.bat en cada PC
+     (o 'Crear acceso directo en esta PC' en la pantalla de ingreso): crea el acceso directo en el escritorio
+     e instala el certificado para el candado 🔒 (Windows pregunta: elegí Sí).
+  3. Arriba a la derecha, "Responsable": su nombre (queda en el registro de cambios de cada certificación).
+  4. Guardar la página en Favoritos.
+
+Cómo se reparten el trabajo:
+  - Los archivos (maestro, calidad, config) los sube UNA persona; los demás ya los ven.
+  - Cada uno elige mes, período y proveedor; pueden trabajar en el mismo mes o en meses distintos.
+  - La numeración es una sola: aunque dos confirmen al mismo tiempo, nunca se repite ni se saltea.
+  - Si otro cambió algo, tocá "↻ actualizar" para verlo.
+  - Probado con 10 PC trabajando a la vez: abrir una certificación ~1-2 s, guardar ~3 s,
+    confirmar ~5 s (genera PDF + Excel), sin errores ni números repetidos.
+    La primera vez que alguien abre un mes, el servidor lo arma (10-15 s); después es inmediato.
+
+Seguridad en red:
+  - Cada uno con su usuario. Roles: Administrador (todo + usuarios + imágenes), Certificador (certifica),
+    Consulta (solo ver y descargar). Si alguien deja la empresa: 👥 Usuarios → Desactivar.
+  - Conexión cifrada (HTTPS) con certificado propio de la empresa (trabajo\certificado).
+  - 5 contraseñas mal seguidas → ese usuario queda bloqueado 15 minutos en esa PC.
+  - La sesión se cierra sola tras 1 hora sin uso (y a las 12 horas como máximo).
+  - Quién confirma queda registrado con su usuario (no se puede firmar por otro).
+  - Registro de ingresos: trabajo\accesos.log. Usuarios: trabajo\usuarios.json (contraseñas cifradas).
+  - Si el administrador olvida su contraseña: RESTABLECER_ADMIN.bat en la PC servidor.
+  - El archivo clave_red.txt de la versión anterior ya no se usa: se puede borrar.
+  - No lo publiques en internet (no abrir el puerto en el router). Para entrar desde afuera, VPN de la empresa.
+  - Las descargas solo entregan archivos de la carpeta "trabajo".
+
+Copias de seguridad:
+  - COPIA_DE_SEGURIDAD.bat copia "trabajo" a "respaldos\fecha_hora". Conviene hacerla todos los días
+    (se puede programar en el Programador de tareas de Windows) y guardar una copia fuera de la PC.
+
+Si la ventana negra se cierra sola:
+  - Ahora no se cierra: muestra el error y espera una tecla. Leé el mensaje (o sacale una foto).
+  - "no encuentro servidor.py" → abriste el .bat desde adentro del zip: extraé el zip primero.
+  - "Python no esta instalado" → instalar Python de python.org marcando "Add python.exe to PATH".
+  - No hagas clic dentro de la ventana: Windows la pone en modo "Seleccionar" y el servidor se frena.
+    Si pasó, apretá Esc.
+
+Si no entra desde otra PC:
+  - ¿Está abierta la ventana negra en el servidor? ¿La PC está prendida y no suspendida?
+  - Probá con la IP en vez del nombre (http://192.168.x.x:8000).
+  - ¿Se ejecutó ABRIR_FIREWALL.bat como administrador? ¿La red de Windows figura como "Privada" o de dominio?
+  - Un antivirus corporativo puede bloquear el puerto: pedile a sistemas que permita TCP 8000 en la red interna.
+  - Para usar otro puerto: cambiá 8000 en INICIAR_WEB_RED.bat y en ABRIR_FIREWALL.bat.

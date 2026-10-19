@@ -1,0 +1,26 @@
+# Datos de trabajo generados por el programa (certificaciones, usuarios, certificados, logs)
+trabajo/
+respaldos/
+
+# Archivos de datos reales: nunca subirlos
+*.xlsb
+config_proveedores_real*.xlsx
+calidad*.xlsx
+Calidad*.xlsx
+maestro*.xlsx
+Maestro*.xlsx
+estado*.json
+
+# ...salvo los datos de ejemplo (ficticios)
+!ejemplo/*.xlsx
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+desktop.ini

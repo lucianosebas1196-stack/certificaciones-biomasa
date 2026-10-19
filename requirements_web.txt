@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+pandas
+pyxlsb
+openpyxl
+reportlab
+ipywidgets
+pypdf
+cryptography

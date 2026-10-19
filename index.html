@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Certificaciones de biomasa</title>
+<link rel="icon" id="favicon" href="data:,">
+<style>
+:root{--verde:#3A7D44;--verde2:#E8F2EA;--verde3:#B7C7BC;--tinta:#1F2A24;--gris:#6B7770;--linea:#DCE3DE;--fondo:#F5F7F5;--amarillo:#FFF2A8;
+--naranja:#B26B00;--rojo:#C00000;--celeste:#DDEBF7;--blanco:#fff}
+*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;color:var(--tinta);background:var(--fondo);font-size:14px}
+header{background:var(--verde);color:#fff;padding:12px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:5}
+header h1{font-size:18px;margin:0;font-weight:600;letter-spacing:.2px}header .sub{opacity:.85;font-size:12px}
+header .usuario{margin-left:auto;display:flex;align-items:center;gap:8px}header input{border:0;border-radius:6px;padding:6px 10px;width:170px}
+main{max-width:1320px;margin:0 auto;padding:18px 24px 60px}
+.pasos{display:grid;grid-template-columns:1fr 1.3fr;gap:16px;margin-bottom:16px}
+.tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:10px;padding:16px 18px}
+.tarjeta h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.num{background:var(--verde);color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.drop{border:2px dashed var(--verde3);border-radius:8px;padding:16px;text-align:center;color:var(--gris);cursor:pointer;transition:.15s}
+.drop:hover,.drop.sobre{border-color:var(--verde);background:var(--verde2);color:var(--tinta)}
+.chips{display:flex;flex-direction:column;gap:6px;margin-top:10px}.chip{display:flex;gap:8px;align-items:baseline;font-size:13px}
+.ok{color:var(--verde);font-weight:600}.falta{color:var(--gris)}
+.fila{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+label{font-size:12px;color:var(--gris);display:block;margin-bottom:3px}
+select,input[type=number],input[type=text],textarea{border:1px solid var(--linea);border-radius:6px;padding:6px 8px;font:inherit;background:#fff}
+button{font:inherit;border-radius:6px;border:1px solid var(--linea);background:#fff;padding:7px 14px;cursor:pointer}
+button.prim{background:var(--verde);color:#fff;border-color:var(--verde)}button.prim:hover{filter:brightness(1.07)}
+button.sec{background:var(--verde2);border-color:var(--verde3)}button:disabled{opacity:.5;cursor:default}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px}
+.kpi{background:#fff;border:1px solid var(--linea);border-radius:10px;padding:10px 12px}.kpi b{display:block;font-size:20px;margin-top:2px}
+.kpi span{font-size:12px;color:var(--gris)}
+.barra{display:flex;gap:10px;align-items:center;margin:8px 0 10px;flex-wrap:wrap}.barra .der{margin-left:auto;display:flex;gap:8px}
+table{border-collapse:collapse;width:100%;background:#fff}th,td{padding:7px 8px;border-bottom:1px solid var(--linea);text-align:left;vertical-align:middle}
+th{font-size:12px;color:var(--gris);font-weight:600;background:#FAFBFA}#tabla th{position:sticky;top:60px;z-index:2}
+td.n{white-space:nowrap}.panel td{white-space:nowrap}.panel td.puntos{white-space:normal}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr.click:hover{background:var(--verde2);cursor:pointer}
+.estado{font-size:12px;padding:2px 8px;border-radius:12px;white-space:nowrap}
+.e-LISTA{background:var(--verde2);color:var(--verde)}.e-REVISAR{background:#FFF0D6;color:var(--naranja)}.e-CONFIRMADA{background:var(--verde);color:#fff}
+.e-MODIFICADA{background:#FFE0B2;color:var(--naranja)}.e-BLOQUEADA{background:#FDE2E2;color:var(--rojo)}
+.puntos{font-size:11px;color:var(--gris)}
+a.arch{font-size:12px;margin-right:6px;color:var(--verde);text-decoration:none;font-weight:600}
+.panel{position:fixed;top:0;right:0;width:min(1100px,96vw);height:100vh;background:#fff;box-shadow:-8px 0 30px rgba(0,0,0,.18);z-index:10;
+transform:translateX(105%);transition:transform .2s;display:flex;flex-direction:column}
+.panel.abierto{transform:none}.panel .cab{padding:14px 20px;border-bottom:1px solid var(--linea);display:flex;gap:12px;align-items:center}
+.panel .cuerpo{overflow:auto;padding:14px 20px 30px;flex:1}.panel h3{font-size:14px;margin:18px 0 8px;border-bottom:2px solid var(--verde);padding-bottom:4px}
+.velo{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:9;display:none}.velo.on{display:block}
+td input.pct{width:64px;text-align:right;background:var(--celeste);border-color:#B4CDE6}td input.pct.man{background:#FFE0B2}
+tr.desc td{background:var(--amarillo)}
+.precio input{width:120px;text-align:right;background:var(--celeste)}
+.obs li{margin:2px 0}.CRITICA{color:var(--naranja)}.ADVERTENCIA{color:var(--gris)}
+.aviso{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--tinta);color:#fff;padding:10px 18px;border-radius:8px;z-index:20;display:none;max-width:80vw}
+.aviso.error{background:var(--rojo)}
+.cuadre{font-size:12px}.cuadre td{padding:3px 8px}
+.vacio{padding:40px;text-align:center;color:var(--gris)}
+.importe{font-size:20px;font-weight:700;background:#FFFF00;padding:4px 10px;border-radius:4px;display:inline-block}
+body::before{content:"";position:fixed;inset:70px 0 0 0;background:var(--marca,none) center 55%/min(55vw,640px) no-repeat;opacity:.07;pointer-events:none;z-index:0}
+main{position:relative;z-index:1}.tarjeta,.kpi{background:rgba(255,255,255,.93)}
+.tema{border-top:1px solid var(--linea);padding:12px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}
+.tema input[type=color]{width:46px;height:32px;border:1px solid var(--linea);border-radius:6px;padding:2px;background:#fff}
+header.con-fondo{background-size:cover;background-position:center 40%;padding-top:26px;padding-bottom:26px}
+header.con-fondo h1{font-size:22px;text-shadow:0 1px 3px rgba(0,0,0,.4)}header.con-fondo img.logo{height:52px}
+body.foto::before{inset:0;background:var(--marca) center/cover no-repeat;opacity:1;filter:none}
+body.foto::after{content:"";position:fixed;inset:0;background:rgba(245,247,250,.72);pointer-events:none;z-index:0}
+body.foto header{z-index:6}body.foto .vacio{color:var(--tinta)}
+header img.logo{height:42px;max-width:160px;object-fit:contain;background:#fff;border-radius:6px;padding:3px}
+header button.img{background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.4);padding:5px 10px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:30;display:none;align-items:center;justify-content:center}
+.modal.on{display:flex}.modal .caja{background:#fff;border-radius:12px;padding:18px 22px;width:min(560px,94vw);max-height:90vh;overflow:auto}
+.modal h2{font-size:16px;margin:0 0 12px}.slot{display:flex;gap:14px;align-items:center;border-top:1px solid var(--linea);padding:12px 0}
+.slot .prev{width:120px;height:64px;border:1px dashed var(--linea);border-radius:6px;display:flex;align-items:center;justify-content:center;
+background:#FAFBFA center/contain no-repeat;color:var(--gris);font-size:11px;flex:none}
+.slot .txt{flex:1;font-size:13px}.slot .btns{display:flex;flex-direction:column;gap:6px}
+header #quien{white-space:nowrap}
+body.solo-consulta #todos, body.solo-consulta #dGuardar, body.solo-consulta #dConfirmar, body.solo-consulta #armar ~ .nada,
+body.solo-consulta #drop, body.solo-consulta #bajarCfg{display:none}
+@media (max-width:900px){.pasos{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header id="cab">
+  <img class="logo" id="logoImg" alt="" hidden>
+  <div><h1>Certificaciones de biomasa</h1><div class="sub">Planta de biomasa · Control de ingresos</div></div>
+  <div class="usuario"><button class="img" id="btnUsuarios" hidden title="Crear y administrar usuarios">👥 Usuarios</button><button class="img" id="btnImg" title="Logo, fondo y logo de las certificaciones">🖼 Imágenes</button><span id="lblResp">Responsable</span><input id="usuario" placeholder="tu nombre"><span id="quien" hidden></span><button class="img" id="btnClave" hidden title="Cambiar mi contraseña">🔑</button><a class="img" id="btnKit" href="/instalar.bat" hidden title="Descargar el instalador del acceso directo para otra PC" style="text-decoration:none;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:5px 10px;background:rgba(255,255,255,.15)">🔗 Acceso para otra PC</a><button class="img" id="btnSalir" hidden>Salir</button></div>
+</header>
+<div class="modal" id="modalUsuarios"><div class="caja" style="width:min(1000px,96vw)">
+  <h2>Usuarios del programa</h2>
+  <div style="font-size:12px;color:var(--gris);margin-bottom:8px"><b>Administrador</b>: todo, usuarios e imágenes · <b>Certificador</b>: subir archivos, armar, editar, confirmar y descargar · <b>Consulta</b>: solo ver y descargar.
+    Las contraseñas que pongas acá son <b>temporales</b>: cada persona tiene que cambiarla al entrar por primera vez.</div>
+  <table id="tUsuarios" style="font-size:13px"></table>
+  <h3 style="font-size:14px;margin:16px 0 6px">Agregar usuario</h3>
+  <div class="fila"><div><label>Usuario</label><input type="text" id="nuU" placeholder="ej. jperez" style="width:130px"></div>
+    <div><label>Nombre y apellido</label><input type="text" id="nuN" placeholder="Juan Pérez" style="width:190px"></div>
+    <div><label>Rol</label><select id="nuR"><option value="certificador">Certificador</option><option value="consulta">Consulta</option><option value="admin">Administrador</option></select></div>
+    <div><label>Contraseña temporal</label><input type="text" id="nuC" placeholder="8+ letras y números" style="width:150px"></div>
+    <div><label>&nbsp;</label><button class="prim" id="nuOk">Agregar</button></div></div>
+  <div style="text-align:right;margin-top:6px"><button id="cerrarUsuarios">Cerrar</button></div>
+</div></div>
+<div class="modal" id="modalClave"><div class="caja" style="width:min(420px,94vw)">
+  <h2 id="tClave">Cambiar mi contraseña</h2>
+  <div id="claveObl" style="font-size:13px;color:var(--naranja);margin-bottom:6px" hidden>Es tu primer ingreso o te restablecieron la contraseña: elegí una nueva para seguir.</div>
+  <label>Contraseña actual</label><input type="password" id="cAct" autocomplete="current-password" style="width:100%">
+  <label style="margin-top:8px">Nueva contraseña (8+ caracteres, letras y números)</label><input type="password" id="cNue" autocomplete="new-password" style="width:100%">
+  <label style="margin-top:8px">Repetir la nueva</label><input type="password" id="cRep" autocomplete="new-password" style="width:100%">
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button id="cCancel">Cancelar</button><button class="prim" id="cOk">Guardar</button></div>
+</div></div>
+<div class="modal" id="modalImg"><div class="caja">
+  <h2>Imágenes personalizadas</h2>
+  <div style="font-size:12px;color:var(--gris);margin-bottom:6px">PNG, JPG o WEBP de hasta 5 MB. Se ven en todas las PC. Las certificaciones ya confirmadas conservan el logo con que se generaron.</div>
+  <div id="slots"></div>
+  <div class="tema"><b style="flex-basis:100%">Color del programa</b>
+    <input type="color" id="colorTema" value="#3A7D44"><button class="sec" id="colorLogo">Usar el color del logo</button>
+    <button id="colorBase">Verde de siempre</button></div>
+  <div style="text-align:right;margin-top:10px"><button id="cerrarImg">Cerrar</button></div>
+</div></div>
+<main>
+  <section class="pasos">
+    <div class="tarjeta">
+      <h2><span class="num">1</span> Archivos</h2>
+      <div class="drop" id="drop">Arrastrá acá (o hacé clic) el <b>maestro .xlsb</b>, la <b>planilla de calidad</b>, el <b>config</b> y, si estás retomando, el <b>estado</b>.
+        <input type="file" id="archivos" multiple hidden></div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="tarjeta">
+      <h2><span class="num">2</span> Qué certificar</h2>
+      <div class="fila">
+        <div><label>Mes</label><select id="mes"></select></div>
+        <div><label>Último día 1ª quincena</label><input type="number" id="corte" min="10" max="20" value="12" style="width:80px"></div>
+        <div><label>Períodos</label>
+          <label style="display:inline;color:var(--tinta)"><input type="checkbox" class="per" value="1Q" checked> 1ª quincena</label>
+          <label style="display:inline;color:var(--tinta)"><input type="checkbox" class="per" value="2Q" checked> 2ª quincena</label>
+          <label style="display:inline;color:var(--tinta)"><input type="checkbox" class="per" value="Mensual" checked> Mensual</label></div>
+      </div>
+      <div class="fila">
+        <div style="flex:1"><label>Proveedor</label><select id="prov" style="width:100%"></select></div>
+        <div><label>&nbsp;</label><button class="prim" id="armar" disabled>Armar certificaciones</button></div>
+      </div>
+      <div class="puntos">Cada proveedor sale solo en los períodos de su FRECUENCIA (config): QUINCENAL, MENSUAL o AMBAS.</div>
+    </div>
+  </section>
+
+  <section id="resultado" style="display:none">
+    <div class="kpis" id="kpis"></div>
+    <div class="barra">
+      <select id="filtro"><option value="">Todas</option><option>LISTA</option><option>REVISAR</option><option>CONFIRMADA</option><option>MODIFICADA</option></select>
+      <select id="filtroPer"><option value="">Todos los períodos</option><option>1Q</option><option>2Q</option><option>Mensual</option></select>
+      <input type="text" id="buscar" placeholder="Buscar proveedor…">
+      <div class="der">
+        <label style="display:flex;gap:6px;align-items:center;color:var(--tinta)"><input type="checkbox" id="inclRev" checked> incluir las ⚠ para revisar</label>
+        <button class="prim" id="todos">Certificar todos</button>
+        <select id="juntas" title="Todas las confirmadas de lo que está en pantalla, en un solo archivo">
+          <option value="">⬇ Descargar todas juntas…</option><option value="pdf">Un solo PDF (todas)</option>
+          <option value="excel">Un solo Excel (una hoja por certificación)</option><option value="zip">Todos los PDF y Excel (.zip)</option>
+          <option value="sueltos-pdf">Cada PDF por separado</option><option value="sueltos-xls">Cada Excel por separado</option></select>
+        <button id="bajarCfg">Config</button><button id="actualizar" title="Ver los cambios de otros usuarios">↻</button>
+      </div>
+    </div>
+    <table id="tabla"><thead><tr><th>Período</th><th>Proveedor</th><th class="n">Camiones</th><th class="n">TN</th><th class="n">Importe</th>
+      <th>Estado</th><th>Nº</th><th>Archivos</th></tr></thead><tbody></tbody></table>
+    <h3 style="font-size:13px;margin:18px 0 6px">Cuadre contra el maestro</h3>
+    <table class="cuadre" id="cuadre"></table>
+  </section>
+  <div class="vacio" id="vacio">Subí el maestro y elegí el mes para empezar.</div>
+</main>
+
+<div class="velo" id="velo"></div>
+<aside class="panel" id="panel">
+  <div class="cab"><div style="flex:1"><b id="pTitulo"></b><div class="puntos" id="pSub"></div></div>
+    <span class="estado" id="pEstado"></span><button id="cerrar">Cerrar ✕</button></div>
+  <div class="cuerpo" id="pCuerpo"></div>
+</aside>
+<div class="aviso" id="aviso"></div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+// todo texto que viene de los Excel (nombres, remitos, observaciones) se muestra tal cual, sin interpretarlo como HTML
+const esc = v => String(v ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+const fmt = (v, d=2) => v==null ? "" : Number(v).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const pesos = v => v==null ? "" : "$ " + fmt(v, 2);
+const pct = v => v==null ? "" : fmt(v*100, 1) + " %";
+let GEN = null, ACTUAL = null, CTX = null;
+// cada pedido lleva el mes y lo elegido: varias personas pueden trabajar a la vez (con una sola numeración)
+const ctxq = () => `anio=${CTX.anio}&mes=${CTX.mes}&periodos=${CTX.periodos.join(",")}&proveedor=${encodeURIComponent(CTX.proveedor||"")}`;
+let YO = null;          // usuario que inició sesión (si el programa está en red)
+const usuario = () => { if(YO && YO.login) return YO.nombre; const u = $("#usuario").value.trim(); try{localStorage.setItem("usuario", u)}catch(e){}; return u; };
+try { $("#usuario").value = localStorage.getItem("usuario") || ""; } catch(e) {}
+
+function aviso(t, error=false){ const a=$("#aviso"); a.textContent=t; a.className="aviso"+(error?" error":""); a.style.display="block"; clearTimeout(a._t); a._t=setTimeout(()=>a.style.display="none", error?7000:3500); }
+async function api(url, opt={}){
+  const r = await fetch(url, opt);
+  if(r.status===401 && YO && YO.login){ location.href = "/login"; throw new Error("La sesión se cerró: volvé a iniciar sesión."); }
+  if(!r.ok){ let m = r.statusText; try{ const j=await r.json(); m = j.detail || m }catch(e){}; m = String(m).replace(/<[^>]+>/g," "); throw new Error(m); }
+  const j = await r.json();
+  if(j && j.aviso) setTimeout(() => aviso(j.aviso, true), 3800);
+  return j;
+}
+const post = (url, body) => api(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+
+// ---------- 1. archivos
+const drop = $("#drop"), inp = $("#archivos");
+drop.onclick = () => inp.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("sobre"); };
+drop.ondragleave = () => drop.classList.remove("sobre");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("sobre"); subir(e.dataTransfer.files); };
+inp.onchange = () => subir(inp.files);
+async function subir(files){
+  const fd = new FormData(); [...files].forEach(f => fd.append("archivos", f));
+  drop.textContent = "Leyendo archivos… (el maestro puede tardar unos segundos)";
+  try { pintarArchivos(await api("/api/archivos", {method:"POST", body:fd})); aviso("Archivos cargados"); }
+  catch(e){ aviso(e.message, true); }
+  drop.innerHTML = "Arrastrá más archivos o hacé clic para reemplazarlos.";
+}
+function pintarArchivos(info){
+  const c = $("#chips"); c.innerHTML = "";
+  const item = (t, v, extra) => c.insertAdjacentHTML("beforeend", `<div class="chip">${v?'<span class="ok">✔</span>':'<span class="falta">○</span>'} <b>${t}</b> <span class="puntos">${v ? esc(extra) : "falta"}</span></div>`);
+  item("Maestro", info.maestro, info.maestro && `${info.maestro.archivo} · ${info.maestro.filas.toLocaleString("es-AR")} filas`);
+  item("Planilla de calidad", info.calidad, info.calidad && `${info.calidad.archivo} · ${info.calidad.muestras.toLocaleString("es-AR")} muestras hasta el ${info.calidad.ultima}`);
+  item("Config de proveedores", info.config, info.config && `${info.config.archivo} · ${info.config.proveedores} proveedores (${info.config.con_cuit} con CUIT) · próximo Nº ${info.config.proximo}`);
+  if(info.maestro){
+    const s = $("#mes"); s.innerHTML = info.maestro.meses.map(m => `<option value="${m.anio}-${m.mes}">${m.nombre}</option>`).join("");
+    s.selectedIndex = Math.max(0, info.maestro.meses.length - 2);
+    if(info.config) $("#corte").value = info.config.corte;
+    $("#armar").disabled = false; listarProveedores();
+  }
+}
+$("#mes").onchange = () => listarProveedores();
+async function listarProveedores(){
+  const [anio, mes] = $("#mes").value.split("-");
+  const ps = await api(`/api/proveedores?anio=${anio}&mes=${mes}`);
+  $("#prov").innerHTML = `<option value="">— Todos los proveedores (${ps.length}) —</option>` +
+    ps.map(p => `<option value="${esc(p.nombre)}">${esc(p.nombre)} · ${p.remitos} remitos · ${fmt(p.tn)} TN${p.frecuencia?" · "+p.frecuencia:""}</option>`).join("");
+}
+
+// ---------- 2. armar
+$("#armar").onclick = async () => {
+  const [anio, mes] = $("#mes").value.split("-").map(Number);
+  const periodos = $$(".per:checked").map(x => x.value);
+  if(!periodos.length) return aviso("Marcá al menos un período", true);
+  $("#armar").disabled = true; $("#armar").textContent = "Armando…";
+  const proveedor = $("#prov").value || null;
+  try { GEN = await post("/api/armar", {anio, mes, periodos, corte:Number($("#corte").value), proveedor}); CTX = {anio, mes, periodos, proveedor}; pintarGeneral(); }
+  catch(e){ aviso(e.message, true); }
+  $("#armar").disabled = false; $("#armar").textContent = "Armar certificaciones";
+};
+function pintarGeneral(){
+  $("#vacio").style.display = "none"; $("#resultado").style.display = "block";
+  const cs = GEN.certs, n = e => cs.filter(c => c.estado===e).length;
+  const tn = cs.reduce((a,c)=>a+(c.tn||0),0), imp = cs.reduce((a,c)=>a+(c.importe||0),0);
+  const cuadra = GEN.cuadre.every(r => String(r.Resultado).includes("✔"));
+  $("#kpis").innerHTML = [
+    ["Certificaciones", cs.length, `${GEN.mes_nombre} ${GEN.anio} · 1ª quincena 1–${GEN.corte}`],
+    ["Listas", n("LISTA"), "para confirmar"], ["Para revisar", n("REVISAR"), "observaciones del maestro"],
+    ["Confirmadas", n("CONFIRMADA"), "próximo Nº " + GEN.proximo + ((!YO || !YO.login || YO.rol === "admin") ? ' <a href="#" id="cambiarNum" title="Cambiar el próximo número">cambiar</a>' : "")], ["Toneladas", fmt(tn), "en lo mostrado"],
+    ["Cuadre", cuadra ? "✔ cuadra" : "✖ revisar", pesos(imp) + " a facturar"]
+  ].map(([t,v,s]) => `<div class="kpi"><span>${t}</span><b>${v}</b><span>${s}</span></div>`).join("");
+  const cn = $("#cambiarNum");
+  if(cn) cn.onclick = async ev => { ev.preventDefault();
+    const v = prompt("Próximo número de certificación (solo el número, ej. 4585):", String(GEN.proximo).split("-").pop().replace(/^0+/, ""));
+    if(v === null) return;
+    const nro = parseInt(String(v).replace(/\D/g, ""), 10);
+    if(!nro) return aviso("Escribí un número válido", true);
+    try { const r = await post("/api/numeracion", {proximo: nro}); aviso(`✅ La próxima certificación va a ser la Nº ${r.proximo}`); await refrescar(); }
+    catch(e){ aviso(e.message, true); } };
+  pintarTabla();
+  const cols = ["Período","TN maestro","TN certificadas","TN de otra frecuencia","Diferencia","Resultado"];
+  $("#cuadre").innerHTML = `<tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr>` + GEN.cuadre.map(r => `<tr>${cols.map(c => `<td>${typeof r[c]==="number"?fmt(r[c]):esc(r[c]??"")}</td>`).join("")}</tr>`).join("");
+}
+["#filtro","#filtroPer"].forEach(s => $(s).onchange = pintarTabla); $("#buscar").oninput = pintarTabla;
+function pintarTabla(){
+  const f = $("#filtro").value, fp = $("#filtroPer").value, q = $("#buscar").value.toLowerCase();
+  const filas = GEN.certs.filter(c => (!f || c.estado===f) && (!fp || c.periodo===fp) && (!q || (c.proveedor+c.razon+c.puntos.join()).toLowerCase().includes(q)));
+  $("#tabla tbody").innerHTML = filas.map(c => `<tr class="click" data-key="${encodeURIComponent(c.key)}">
+    <td>${c.periodo}</td><td><b>${esc(c.razon)}</b>${c.formato==="MYM"?' <span class="puntos">· formato MyM</span>':''}
+      <div class="puntos">${c.puntos.length>1 || c.puntos[0]!==c.proveedor ? "Puntos: "+esc(c.puntos.join(" · ")) : esc(c.proveedor)}</div></td>
+    <td class="n">${c.camiones}</td><td class="n">${fmt(c.tn)}</td><td class="n">${c.importe ? pesos(c.importe) : '<span class="puntos">falta precio</span>'}</td>
+    <td><span class="estado e-${c.estado}">${c.icono} ${c.estado}</span></td><td style="white-space:nowrap">${esc(c.numero||"")}</td>
+    <td style="white-space:nowrap">${c.pdf?`<a class="arch" onclick="event.stopPropagation()" href="/api/descargar?ruta=${encodeURIComponent(c.pdf)}">PDF</a>`:""}${c.excel?`<a class="arch" onclick="event.stopPropagation()" href="/api/descargar?ruta=${encodeURIComponent(c.excel)}">Excel</a>`:""}</td></tr>`).join("") || `<tr><td colspan="8" class="vacio">Nada para mostrar con ese filtro.</td></tr>`;
+  $$("#tabla tr.click").forEach(tr => tr.onclick = () => abrir(decodeURIComponent(tr.dataset.key)));
+}
+
+// ---------- detalle
+$("#cerrar").onclick = cerrar; $("#velo").onclick = cerrar;
+function cerrar(){ $("#panel").classList.remove("abierto"); $("#velo").classList.remove("on"); }
+async function abrir(key){
+  try { ACTUAL = await api(`/api/certificacion?key=${encodeURIComponent(key)}&${ctxq()}`); pintarDetalle(); $("#panel").classList.add("abierto"); $("#velo").classList.add("on"); }
+  catch(e){ aviso(e.message, true); }
+}
+function pintarDetalle(){
+  const c = ACTUAL;
+  $("#pTitulo").textContent = `${c.razon} — ${c.periodo} (${c.desde} al ${c.hasta})`;
+  $("#pSub").textContent = (c.puntos.length>1||c.puntos[0]!==c.proveedor ? "Puntos de entrega: "+c.puntos.join(" · ")+" · " : "") + `${c.camiones} camiones · ${fmt(c.tn)} TN` + (c.formato==="MYM"?" · formato MyM":"");
+  $("#pEstado").className = "estado e-"+c.estado; $("#pEstado").textContent = c.icono+" "+c.estado+(c.numero?" · Nº "+c.numero:"");
+  const desc = c.filas.map(f => {
+    const conDesc = (f.desc_gran>0) || (f.desc_hum>0);
+    const edG = f.producto==="CHIP" && !c.sin_gran, edH = (f.producto==="CHIP"||f.producto==="ASERRIN") && !c.sin_hum;
+    return `<tr class="${conDesc?"desc":""}"><td>${esc(f.fecha)}</td><td>${esc(f.rto)}</td><td class="puntos">${esc(f.punto)}</td><td>${esc(f.rto_prov)}</td><td>${esc(f.producto)}</td>
+      <td class="n">${fmt(f.kilos,0)}</td><td class="n">${pct(f.hum)}</td><td class="n">${pct(f.finos)}</td>
+      <td class="n">${edH?`<input class="pct ${f.man_hum?"man":""}" data-id="${esc(f.id)}" data-t="hum" value="${fmt(f.desc_hum,2)}" title="${f.man_hum?"puesto a mano":"automático"}">`:""}</td>
+      <td class="n">${edG?`<input class="pct ${f.man_gran?"man":""}" data-id="${esc(f.id)}" data-t="gran" value="${fmt(f.desc_gran,2)}" title="${f.man_gran?"puesto a mano":"automático"}">`:""}</td>
+      <td class="n">${fmt(f.kilos_neto,1)}</td><td class="n">${f.aserrin>0?fmt(f.aserrin,1):""}</td></tr>`; }).join("");
+  const precios = c.precios.map(p => `<tr><td><b>${esc(p.etiqueta)}</b></td><td class="precio"><input data-p="${esc(p.producto)}" value="${p.precio==null?"":fmt(p.precio,2)}" placeholder="completar"></td>
+      <td class="n">${p.entregado?fmt(p.tn):"—"}</td><td class="n">${p.entregado&&p.precio?pesos(p.subtotal):""}</td><td class="puntos">${esc(p.origen)}</td></tr>`).join("");
+  const obs = c.obs.length ? `<ul class="obs">${[...new Set(c.obs.map(o => `<li class="${esc(o.sev)}">${o.rem?esc(o.rem)+" · ":""}${esc(o.msg)}</li>`))].join("")}</ul>` : '<span class="ok">✔ Sin observaciones</span>';
+  $("#pCuerpo").innerHTML = `
+    <h3>1 · Proveedor</h3>
+    <div class="fila"><div style="flex:1"><label>Razón social</label><input type="text" id="dRazon" value="${esc(c.razon)}" style="width:100%"></div>
+      <div><label>CUIT</label><input type="text" id="dCuit" value="${esc(c.cuit||"")}" placeholder="30-12345678-9"></div>
+      <div><label>Certificación</label><select id="dFrec">${[["","según lo marcado"],["QUINCENAL","QUINCENAL"],["MENSUAL","MENSUAL"],["AMBAS","AMBAS"]].map(([v,t])=>`<option value="${v}" ${c.frecuencia===v?"selected":""}>${t}</option>`).join("")}</select></div></div>
+    <h3>2 · Remitos, humedad y granulometría</h3>
+    <div class="fila"><label style="display:inline;color:var(--tinta)"><input type="checkbox" id="dSinGran" ${c.sin_gran?"checked":""}> Quitar el descuento de granulometría en esta certificación</label>
+      <label style="display:inline;color:var(--tinta)"><input type="checkbox" id="dSinHum" ${c.sin_hum?"checked":""}> Quitar el descuento de humedad</label></div>
+    <div class="puntos" style="margin-bottom:6px">Celdas celestes: % de descuento de cada camión (escribí otro valor o 0 para quitarlo; vacío = automático). Naranja = puesto a mano.</div>
+    <table><thead><tr><th>Fecha</th><th>Rto planta</th><th>Punto</th><th>Rto prov.</th><th>Producto</th><th class="n">Kilos</th><th class="n">Humedad</th><th class="n">Granulom.</th>
+      <th class="n">Desc. hum. %</th><th class="n">Desc. gran. %</th><th class="n">Kilos a pagar</th><th class="n">Aserrín</th></tr></thead><tbody>${desc}</tbody></table>
+    <h3>3 · Precios ($ por TN)</h3>
+    <table style="width:auto"><thead><tr><th>Producto</th><th>$ por TN</th><th class="n">TN a pagar</th><th class="n">Subtotal</th><th>Origen</th></tr></thead><tbody>${precios}</tbody></table>
+    <div class="fila" style="margin-top:8px"><label style="display:inline;color:var(--tinta)"><input type="radio" name="modo" value="prov" checked> Guardar para este proveedor (próximas certificaciones)</label>
+      <label style="display:inline;color:var(--tinta)"><input type="radio" name="modo" value="esta"> Solo esta certificación</label></div>
+    <div style="margin:6px 0 4px">Importe a facturar: <span class="importe">${pesos(c.importe)}</span></div>
+    <h3>4 · Observaciones</h3>${obs}
+    ${c.criticas.length?`<label style="color:var(--tinta);margin-top:6px"><input type="checkbox" id="dRev" ${c.revisada?"checked":""}> Revisé las observaciones y la certificación es correcta</label>`:""}
+    <h3>5 · Guardar y confirmar</h3>
+    <textarea id="dMotivo" rows="2" style="width:100%" placeholder="Motivo de los cambios (obligatorio si cambiás descuentos)"></textarea>
+    <div class="fila" style="margin-top:8px"><button class="sec" id="dGuardar">Guardar cambios</button>${(!c.numero && (!YO || !YO.login || YO.rol === "admin")) ? `<label style="display:inline-flex;align-items:center;gap:6px;margin:0;color:var(--tinta)" title="Opcional: dejalo vacío para usar el próximo número automático">Nº a mano <input type="text" id="dNumero" placeholder="automático" style="width:110px"></label>` : ""}<button class="prim" id="dConfirmar">Confirmar y generar PDF + Excel</button>
+      ${c.pdf?`<a class="arch" href="/api/descargar?ruta=${encodeURIComponent(c.pdf)}">⬇ PDF</a>`:""}${c.excel?`<a class="arch" href="/api/descargar?ruta=${encodeURIComponent(c.excel)}">⬇ Excel</a>`:""}</div>`;
+  $("#dGuardar").onclick = guardar; $("#dConfirmar").onclick = confirmar;
+}
+// números como se escriben acá: 21.500 · 21500 · 21.500,50 · 2,7 · 2.7 (con un solo punto y 1-2 decimales)
+const num = s => { s = String(s).trim().replace(/[%$\s]/g,""); if(s==="") return null;
+  if(/,\d*\./.test(s) || (s.match(/,/g)||[]).length > 1) throw new Error(`"${s}": escribilo como 21.500,50 (punto para miles, coma para decimales)`);
+  if(s.includes(",")) s = s.replace(/\./g,"").replace(",",".");
+  else if(/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g,"");
+  const n = Number(s); if(Number.isNaN(n)) throw new Error(`"${s}" no es un número`); return n; };
+async function guardar(){ try { await _guardar(); } catch(e){ aviso(e.message, true); } }
+// arma lo que cambió en el panel; null si no hay nada pendiente de guardar
+function cambiosPendientes(){
+  const c = ACTUAL, body = {usuario:usuario(), motivo:$("#dMotivo").value, desc_gran:{}, desc_hum:{}, precios:{},
+    precios_solo_esta: $$("input[name=modo]:checked")[0].value==="esta"};
+  if($("#dRazon").value !== c.razon) body.razon = $("#dRazon").value;
+  if($("#dCuit").value !== (c.cuit||"")) body.cuit = $("#dCuit").value;
+  if($("#dFrec").value !== c.frecuencia) body.frecuencia = $("#dFrec").value;
+  if($("#dSinGran").checked !== c.sin_gran) body.sin_gran = $("#dSinGran").checked;
+  if($("#dSinHum").checked !== c.sin_hum) body.sin_hum = $("#dSinHum").checked;
+  if($("#dRev") && $("#dRev").checked !== c.revisada) body.revisada = $("#dRev").checked;
+  $$("#pCuerpo input.pct").forEach(i => { const f = c.filas.find(x => x.id===i.dataset.id); const v = num(i.value);
+    const antes = i.dataset.t==="gran" ? f.desc_gran : f.desc_hum, man = i.dataset.t==="gran" ? f.man_gran : f.man_hum;
+    if(v===null){ if(man) body[i.dataset.t==="gran"?"desc_gran":"desc_hum"][f.id] = null; }
+    else if(Math.abs(v-(antes||0))>0.004) body[i.dataset.t==="gran"?"desc_gran":"desc_hum"][f.id] = v; });
+  $$("#pCuerpo input[data-p]").forEach(i => { const p = c.precios.find(x => x.producto===i.dataset.p); const v = num(i.value);
+    if(v!==null && Math.abs(v-(p.precio||0))>0.001) body.precios[p.producto] = v; });
+  const hay = Object.keys(body).some(k => !["usuario","motivo","desc_gran","desc_hum","precios","precios_solo_esta"].includes(k))
+    || Object.keys(body.desc_gran).length || Object.keys(body.desc_hum).length || Object.keys(body.precios).length;
+  return hay ? body : null;
+}
+async function _guardar(){
+  if(!usuario()) return aviso("Completá Responsable (arriba a la derecha)", true);
+  const c = ACTUAL, body = cambiosPendientes();
+  if(!body) return aviso("No hay cambios para guardar");
+  const bt = $("#dGuardar"); bt.disabled = true; bt.textContent = "Guardando…";
+  try { const r = await post(`/api/certificacion?key=${encodeURIComponent(c.key)}&${ctxq()}`, body);
+    if(r.quitada){ GEN = r; cerrar(); pintarGeneral(); return aviso(r.msg); }
+    ACTUAL = r; pintarDetalle(); await refrescar(); aviso("✔ Guardado"); }
+  catch(e){ aviso(e.message, true); bt.disabled = false; bt.textContent = "Guardar cambios"; }
+}
+async function confirmar(){
+  if(!usuario()) return aviso("Completá Responsable (arriba a la derecha)", true);
+  let pendiente;
+  try { pendiente = cambiosPendientes(); } catch(e){ return aviso(e.message, true); }
+  if(pendiente){        // primero se guarda lo que se escribió, así el PDF sale con esos valores
+    if(!confirm("Hay cambios sin guardar. Se guardan y después se confirma. ¿Seguir?")) return;
+    try { await _guardar(); } catch(e){ return aviso(e.message, true); }
+    if(!$("#panel").classList.contains("abierto") || cambiosPendientes()) return;   // no se pudo guardar (el aviso dice por qué)
+  }
+  if(ACTUAL.criticas.length && !(ACTUAL.revisada || ($("#dRev") && $("#dRev").checked)))
+    return aviso("Tiene observaciones para revisar: miralas, tildá «Revisé las observaciones…» y volvé a confirmar.", true);
+  const bt = $("#dConfirmar"); bt.disabled = true; bt.textContent = "Generando PDF y Excel…";
+  const nroTxt = $("#dNumero") ? $("#dNumero").value.replace(/\D/g, "") : "";
+  if(nroTxt && !confirm(`Se va a confirmar con el Nº ${nroTxt} (elegido a mano). ¿Seguir?`)){ bt.disabled = false; bt.textContent = "Confirmar y generar PDF + Excel"; return; }
+  try { ACTUAL = await post(`/api/confirmar?key=${encodeURIComponent(ACTUAL.key)}`, {usuario:usuario(), incluir_revisar:true, ...CTX, ...(nroTxt ? {numero: parseInt(nroTxt, 10)} : {})});
+    pintarDetalle(); await refrescar(); aviso(`✅ Confirmada Nº ${ACTUAL.numero}: PDF y Excel listos`); }
+  catch(e){ aviso(e.message, true); bt.disabled = false; bt.textContent = "Confirmar y generar PDF + Excel"; }
+}
+async function refrescar(){ if(!CTX) return; GEN = await api(`/api/certificaciones?${ctxq()}`); pintarGeneral(); }
+// si trabajan varias personas, la lista se actualiza sola cada 30 segundos (mientras no estés editando)
+setInterval(() => { if(CTX && !$("#panel").classList.contains("abierto") && !document.hidden) refrescar().catch(()=>{}); }, 30000);
+
+// ---------- todos de una vez / descargas
+$("#todos").onclick = async () => {
+  if(!usuario()) return aviso("Completá Responsable (arriba a la derecha)", true);
+  const pend = GEN.certs.filter(c => c.estado!=="CONFIRMADA").length;
+  if(!confirm(`Se van a confirmar ${pend} certificaciones (cada una toma un número correlativo). ¿Seguir?`)) return;
+  $("#todos").disabled = true; $("#todos").textContent = "Certificando…";
+  try { const r = await post("/api/confirmar_todos", {usuario:usuario(), incluir_revisar:$("#inclRev").checked, ...CTX}); GEN = r; pintarGeneral();
+    aviso(`✅ ${r.hechas} certificaciones confirmadas con PDF y Excel`); }
+  catch(e){ aviso(e.message, true); }
+  $("#todos").disabled = false; $("#todos").textContent = "Certificar todos";
+};
+async function bajar(tipo){
+  const conf = GEN.certs.filter(c => c.estado==="CONFIRMADA");
+  if(!conf.length) return aviso("No hay certificaciones confirmadas todavía", true);
+  aviso(`Descargando ${conf.length} archivos (si el navegador pregunta, elegí Permitir)…`);
+  for(const c of conf){ const ruta = tipo==="pdf" ? c.pdf : c.excel;
+    if(!ruta) continue; const a = document.createElement("a"); a.href = "/api/descargar?ruta="+encodeURIComponent(ruta); a.download = ""; document.body.appendChild(a); a.click(); a.remove();
+    await new Promise(r => setTimeout(r, 350)); }
+}
+$("#juntas").onchange = () => { const t = $("#juntas").value; $("#juntas").value = ""; if(!t) return;
+  if(!CTX) return aviso("Primero armá las certificaciones", true);
+  if(!GEN.certs.some(c => c.estado==="CONFIRMADA")) return aviso("Todavía no hay certificaciones confirmadas en lo que está en pantalla", true);
+  if(t==="sueltos-pdf") return bajar("pdf"); if(t==="sueltos-xls") return bajar("xls");
+  aviso("Preparando el archivo…"); location.href = `/api/descargar_juntas?tipo=${t}&${ctxq()}`; };
+// ---------- sesión, contraseña y usuarios
+async function cargarYo(){
+  try { YO = await (await fetch("/api/yo")).json(); } catch(e){ YO = {login:false}; }
+  if(!YO.login) return;
+  $("#usuario").hidden = true; $("#lblResp").hidden = true;
+  const q = $("#quien"); q.hidden = false; q.innerHTML = `<b>${esc(YO.nombre)}</b> <span style="opacity:.8;font-size:12px">· ${esc(YO.rol_nombre)}</span>`;
+  $("#btnSalir").hidden = false; $("#btnClave").hidden = false;
+  $("#btnUsuarios").hidden = YO.rol !== "admin"; $("#btnImg").hidden = YO.rol !== "admin"; $("#btnKit").hidden = false;
+  if(YO.rol === "consulta") document.body.classList.add("solo-consulta");
+  if(YO.debe_cambiar) abrirClave(true);
+}
+$("#btnSalir").onclick = async () => { await fetch("/api/logout", {method:"POST"}); location.href = "/login"; };
+function abrirClave(obligatorio){
+  $("#claveObl").hidden = !obligatorio; $("#cCancel").hidden = !!obligatorio;
+  ["#cAct","#cNue","#cRep"].forEach(x => $(x).value = ""); $("#modalClave").classList.add("on"); $("#cAct").focus(); }
+$("#btnClave").onclick = () => abrirClave(false);
+$("#cCancel").onclick = () => $("#modalClave").classList.remove("on");
+$("#cOk").onclick = async () => {
+  if($("#cNue").value !== $("#cRep").value) return aviso("Las dos contraseñas nuevas no coinciden", true);
+  try { await post("/api/clave", {actual:$("#cAct").value, nueva:$("#cNue").value});
+    $("#modalClave").classList.remove("on"); aviso("✅ Contraseña cambiada"); await cargarYo(); iniciar && iniciar(); }
+  catch(e){ aviso(e.message, true); } };
+async function pintarUsuarios(lista){
+  lista = lista || await api("/api/usuarios");
+  const opt = r => ["admin","certificador","consulta"].map(v => `<option value="${v}" ${r===v?"selected":""}>${{admin:"Administrador",certificador:"Certificador",consulta:"Consulta"}[v]}</option>`).join("");
+  $("#tUsuarios").innerHTML = `<tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Último ingreso</th><th></th></tr>` +
+    lista.map(u => `<tr data-u="${esc(u.usuario)}"><td><b>${esc(u.usuario)}</b></td><td>${esc(u.nombre)}</td>
+      <td><select data-rol>${opt(u.rol)}</select></td>
+      <td>${u.activo ? (u.debe_cambiar ? '<span class="estado e-REVISAR">debe cambiar contraseña</span>' : '<span class="estado e-LISTA">activo</span>') : '<span class="estado e-BLOQUEADA">desactivado</span>'}</td>
+      <td class="puntos">${esc(u.ultimo_ingreso||"—")}</td>
+      <td style="white-space:nowrap"><button data-reset>Restablecer contraseña</button> <button data-act>${u.activo?"Desactivar":"Activar"}</button></td></tr>`).join("");
+}
+$("#btnUsuarios").onclick = async () => { try { await pintarUsuarios(); $("#modalUsuarios").classList.add("on"); } catch(e){ aviso(e.message, true); } };
+$("#cerrarUsuarios").onclick = () => $("#modalUsuarios").classList.remove("on");
+$("#nuOk").onclick = async () => {
+  try { const l = await post("/api/usuarios", {usuario:$("#nuU").value, nombre:$("#nuN").value, rol:$("#nuR").value, clave:$("#nuC").value});
+    aviso(`✅ Usuario creado. Pasale el usuario y la contraseña temporal a ${$("#nuN").value}.`); ["#nuU","#nuN","#nuC"].forEach(x => $(x).value = ""); pintarUsuarios(l); }
+  catch(e){ aviso(e.message, true); } };
+$("#tUsuarios").onchange = async e => { const tr = e.target.closest("tr"); if(!e.target.dataset.hasOwnProperty("rol")) return;
+  try { pintarUsuarios(await post(`/api/usuarios/${encodeURIComponent(tr.dataset.u)}`, {rol:e.target.value})); aviso("Rol cambiado"); }
+  catch(err){ aviso(err.message, true); pintarUsuarios(); } };
+$("#tUsuarios").onclick = async e => { const tr = e.target.closest("tr"); if(!tr) return; const u = tr.dataset.u;
+  try {
+    if(e.target.hasAttribute("data-reset")){
+      const c = prompt(`Contraseña temporal para ${u} (8+ letras y números). Va a tener que cambiarla al entrar:`); if(!c) return;
+      pintarUsuarios(await post(`/api/usuarios/${encodeURIComponent(u)}`, {clave:c})); aviso("Contraseña restablecida"); }
+    if(e.target.hasAttribute("data-act")){
+      const activar = e.target.textContent === "Activar";
+      if(!activar && !confirm(`¿Desactivar a ${u}? No va a poder entrar más (se puede volver a activar).`)) return;
+      pintarUsuarios(await post(`/api/usuarios/${encodeURIComponent(u)}`, {activo:activar})); aviso(activar ? "Usuario activado" : "Usuario desactivado"); }
+  } catch(err){ aviso(err.message, true); } };
+
+// ---------- imágenes personalizadas
+let IMGS = {};
+async function cargarImagenes(){
+  IMGS = await (await fetch("/api/imagenes")).json();
+  const v = t => `/api/imagen/${t}?v=${IMGS[t].version}`;
+  const logo = $("#logoImg"), cab = $("#cab");
+  if(IMGS.logo.hay){ logo.src = v("logo"); logo.hidden = false; $("#favicon").href = v("logo"); }
+  else { logo.hidden = true; logo.removeAttribute("src"); $("#favicon").href = "data:,"; }
+  if(IMGS.fondo.hay){ cab.classList.add("con-fondo");
+    const c = getComputedStyle(document.documentElement).getPropertyValue("--verde").trim();
+    cab.style.backgroundImage = `linear-gradient(90deg,${c}E6 0%,${c}99 45%,${c}40 100%),url(${v("fondo")})`; }
+  else { cab.classList.remove("con-fondo"); cab.style.backgroundImage = ""; }
+  document.body.classList.toggle("foto", !!(IMGS.fondo_pagina.hay && IMGS.fondo_pagina.foto));
+  document.documentElement.style.setProperty("--marca", IMGS.fondo_pagina.hay ? `url(${v("fondo_pagina")})` : "none");
+  $("#slots").innerHTML = Object.entries(IMGS).map(([t,i]) => `<div class="slot">
+    <div class="prev" style="${(i.hay||t==="logo_cert")?`background-image:url(${v(t)})`:""}">${(i.hay||t==="logo_cert")?"":"sin imagen"}</div>
+    <div class="txt"><b>${i.descripcion}</b><br><span style="color:var(--gris)">${i.hay?"personalizada":(t==="logo_cert"?"se usa el logo de siempre":"no hay")}</span></div>
+    <div class="btns"><button class="sec" data-subir="${t}">Elegir imagen…</button>${i.hay?`<button data-quitar="${t}">Quitar</button>`:""}</div></div>`).join("");
+}
+$("#btnImg").onclick = () => $("#modalImg").classList.add("on");
+$("#cerrarImg").onclick = () => $("#modalImg").classList.remove("on");
+$("#modalImg").onclick = e => { if(e.target.id==="modalImg") $("#modalImg").classList.remove("on"); };
+$("#slots").onclick = async e => {
+  const t = e.target.dataset.subir, q = e.target.dataset.quitar;
+  if(t){ const inp = document.createElement("input"); inp.type="file"; inp.accept="image/png,image/jpeg,image/webp";
+    inp.onchange = async () => { if(!inp.files[0]) return; const fd = new FormData(); fd.append("archivo", inp.files[0]);
+      const r = await fetch(`/api/imagen/${t}`, {method:"POST", body:fd});
+      if(!r.ok){ let m="No se pudo subir la imagen"; try{ m=(await r.json()).detail||m; }catch{} return aviso(m, true); }
+      await cargarImagenes(); aviso("✅ Imagen guardada"); };
+    inp.click(); }
+  if(q && confirm("¿Quitar esta imagen?")){ await fetch(`/api/imagen/${q}`, {method:"DELETE"}); await cargarImagenes(); aviso("Imagen quitada"); }
+};
+function mezclar(hex, f){ const n=parseInt(hex.slice(1),16), c=[n>>16,(n>>8)&255,n&255].map(x=>Math.round(x+(255-x)*f));
+  return "#"+c.map(x=>x.toString(16).padStart(2,"0")).join(""); }
+function aplicarTema(color){ const r=document.documentElement.style;
+  r.setProperty("--verde", color); r.setProperty("--verde2", mezclar(color,.88)); r.setProperty("--verde3", mezclar(color,.65)); $("#colorTema").value = color.toLowerCase(); }
+async function cargarTema(){ aplicarTema((await (await fetch("/api/tema")).json()).color); }
+async function guardarTema(cuerpo){ const r = await fetch("/api/tema",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(cuerpo)});
+  const j = await r.json(); if(!r.ok) return aviso(j.detail||"No se pudo", true); aplicarTema(j.color); await cargarImagenes(); aviso("✅ Color guardado"); }
+$("#colorTema").onchange = e => guardarTema({color:e.target.value.toUpperCase()});
+$("#colorLogo").onclick = () => guardarTema({desde_logo:true});
+$("#colorBase").onclick = () => guardarTema({color:null});
+cargarTema().then(()=>cargarImagenes()).catch(()=>{});
+setInterval(() => { if(!document.hidden && !$("#modalImg").classList.contains("on")) cargarTema().then(()=>cargarImagenes()).catch(()=>{}); }, 60000);
+
+$("#bajarCfg").onclick = () => location.href = "/api/descargar_config";
+$("#actualizar").onclick = () => refrescar().then(() => aviso("Actualizado")).catch(e => aviso(e.message, true));
+
+const iniciar = () => api("/api/archivos").then(i => { if(i.maestro) pintarArchivos(i); }).catch(()=>{});
+cargarYo().then(() => { if(!(YO && YO.debe_cambiar)) iniciar(); });
+</script>
+</body>
+</html>

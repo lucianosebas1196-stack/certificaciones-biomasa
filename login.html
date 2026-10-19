@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iniciar sesión · Certificaciones de biomasa</title>
+<link rel="icon" id="favicon" href="data:,">
+<style>
+:root{--verde:#3A7D44;--tinta:#1F2A24;--gris:#6B7770;--linea:#DCE3DE;--fondo:#F5F7F5;--rojo:#C00000}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;color:var(--tinta);background:var(--fondo) center/cover no-repeat}
+body.foto::before{content:"";position:fixed;inset:0;background:rgba(245,247,250,.78)}
+.caja{position:relative;background:#fff;border:1px solid var(--linea);border-radius:14px;padding:28px 28px 22px;width:min(380px,100%);
+  box-shadow:0 10px 40px rgba(0,0,0,.12)}
+.cab{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.cab img{height:44px;max-width:130px;object-fit:contain}
+.cab .marca{width:44px;height:44px;border-radius:10px;background:var(--verde)}
+h1{font-size:18px;margin:0}.sub{font-size:12px;color:var(--gris)}
+label{font-size:12px;color:var(--gris);display:block;margin:12px 0 4px}
+input{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--linea);border-radius:8px}
+input:focus{outline:2px solid var(--verde);outline-offset:0;border-color:transparent}
+button{width:100%;margin-top:18px;font:inherit;font-weight:600;padding:11px;border:0;border-radius:8px;background:var(--verde);color:#fff;cursor:pointer}
+button:disabled{opacity:.6;cursor:default}
+.error{color:var(--rojo);font-size:13px;margin-top:12px;min-height:18px}
+.pie{font-size:11px;color:var(--gris);margin-top:14px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pie a{color:var(--gris)}
+</style>
+</head>
+<body>
+<form class="caja" id="f" autocomplete="on">
+  <div class="cab"><img id="logo" alt="" hidden><div class="marca" id="marca"></div>
+    <div><h1>Certificaciones de biomasa</h1><div class="sub">Iniciá sesión con tu usuario</div></div></div>
+  <label for="u">Usuario</label><input id="u" name="username" autocomplete="username" required autofocus>
+  <label for="c">Contraseña</label><input id="c" name="password" type="password" autocomplete="current-password" required>
+  <button id="b">Ingresar</button>
+  <div class="error" id="e" role="alert"></div>
+  <div class="pie"><span id="seg"></span><a href="/instalar.bat" title="Descarga un archivo: abrilo y crea el acceso directo en el escritorio (y el candado)">Crear acceso directo en esta PC</a></div>
+</form>
+<script>
+const $ = s => document.querySelector(s);
+const seguro = location.protocol === "https:";
+$("#seg").textContent = seguro ? "🔒 Conexión cifrada" : "";
+fetch("/api/tema").then(r => r.json()).then(t => { document.documentElement.style.setProperty("--verde", t.color); }).catch(()=>{});
+const img = new Image();
+img.onload = () => { $("#logo").src = img.src; $("#logo").hidden = false; $("#marca").hidden = true; $("#favicon").href = img.src; };
+img.src = "/api/imagen/logo";
+const f = new Image();
+f.onload = () => { document.body.style.backgroundImage = `url(${f.src})`; document.body.classList.add("foto"); };
+f.src = "/api/imagen/fondo";
+$("#f").onsubmit = async ev => {
+  ev.preventDefault(); $("#e").textContent = ""; $("#b").disabled = true; $("#b").textContent = "Verificando…";
+  try {
+    const r = await fetch("/api/login", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({usuario: $("#u").value, clave: $("#c").value})});
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.detail || "No se pudo iniciar sesión.");
+    location.href = "/";
+  } catch(err) {
+    $("#e").textContent = err.message; $("#c").value = ""; $("#c").focus();
+    $("#b").disabled = false; $("#b").textContent = "Ingresar";
+  }
+};
+</script>
+</body>
+</html>
