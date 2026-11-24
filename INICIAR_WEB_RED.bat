@@ -8,9 +8,7 @@ if not exist "servidor.py" (
   echo  Solucion: clic derecho en Sistema_web.zip - "Extraer todo", y abri el .bat de la carpeta extraida.
   goto fin
 )
-set PY=
-python --version >nul 2>nul && set PY=python
-if not defined PY py --version >nul 2>nul && set PY=py
+call "%~dp0_python.bat"
 if not defined PY (
   echo.
   echo  ERROR: Python no esta instalado en esta PC ^(o no esta en el PATH^).
@@ -18,13 +16,23 @@ if not defined PY (
   echo  marca la casilla "Add python.exe to PATH". Despues volve a abrir este archivo.
   goto fin
 )
-%PY% -c "import fastapi, uvicorn, multipart, pandas, pyxlsb, openpyxl, reportlab, pypdf, ipywidgets, cryptography" >nul 2>nul
+%PY% -c "import fastapi, uvicorn, multipart, pandas, pyxlsb, openpyxl, reportlab, pypdf, ipywidgets, cryptography, PIL" >nul 2>nul
 if errorlevel 1 (
   echo Instalando lo necesario ^(solo la primera vez, 1-2 minutos^)...
-  %PY% -m pip install -r requirements_web.txt
+  %PY% -m pip install --only-binary=:all: -r requirements_web.txt
+  if errorlevel 1 (
+    echo  Probando con las versiones que acepte esta PC...
+    %PY% -m pip install --only-binary=:all: fastapi uvicorn python-multipart pandas pyxlsb openpyxl reportlab pypdf Pillow cryptography ipywidgets
+  )
+  %PY% -c "import fastapi, uvicorn, multipart, pandas, pyxlsb, openpyxl, reportlab, pypdf, ipywidgets, cryptography, PIL" >nul 2>nul
   if errorlevel 1 (
     echo.
     echo  ERROR: no se pudieron instalar las librerias. Revisa la conexion a internet y volve a intentar.
+    echo.
+    echo  Si hay internet, el problema es la version de Python de esta PC:
+    %PY% --version
+    echo  Instala Python 3.13 de 64 bits desde https://www.python.org/downloads/ ^(marca "Add python.exe to PATH"^)
+    echo  y volve a abrir este archivo.
     goto fin
   )
 )

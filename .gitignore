@@ -24,3 +24,14 @@ venv/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Versión portátil: Python embebido y librerías (se arman en cada instalación)
+python/
+python-embed.zip
+
+# Generados al usar el programa
+versiones_anteriores/
+actualizar_registro.txt
+PARA_LAS_OTRAS_PC/
+pruebas/resultado_*.txt
+pruebas/comparacion_*.txt

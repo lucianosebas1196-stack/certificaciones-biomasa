@@ -52,6 +52,8 @@ tr.desc td{background:var(--amarillo)}
 .obs li{margin:2px 0}.CRITICA{color:var(--naranja)}.ADVERTENCIA{color:var(--gris)}
 .aviso{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--tinta);color:#fff;padding:10px 18px;border-radius:8px;z-index:20;display:none;max-width:80vw}
 .aviso.error{background:var(--rojo)}
+.banner{display:none;background:#FFF0D6;color:#7A4A00;border-bottom:2px solid var(--naranja);padding:10px 24px;font-size:13px;position:relative;z-index:4}
+.banner.on{display:block}.banner b{color:var(--naranja)}
 .cuadre{font-size:12px}.cuadre td{padding:3px 8px}
 .vacio{padding:40px;text-align:center;color:var(--gris)}
 .importe{font-size:20px;font-weight:700;background:#FFFF00;padding:4px 10px;border-radius:4px;display:inline-block}
@@ -82,8 +84,10 @@ body.solo-consulta #drop, body.solo-consulta #bajarCfg{display:none}
 <header id="cab">
   <img class="logo" id="logoImg" alt="" hidden>
   <div><h1>Certificaciones de biomasa</h1><div class="sub">Planta de biomasa · Control de ingresos</div></div>
-  <div class="usuario"><button class="img" id="btnUsuarios" hidden title="Crear y administrar usuarios">👥 Usuarios</button><button class="img" id="btnImg" title="Logo, fondo y logo de las certificaciones">🖼 Imágenes</button><span id="lblResp">Responsable</span><input id="usuario" placeholder="tu nombre"><span id="quien" hidden></span><button class="img" id="btnClave" hidden title="Cambiar mi contraseña">🔑</button><a class="img" id="btnKit" href="/instalar.bat" hidden title="Descargar el instalador del acceso directo para otra PC" style="text-decoration:none;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:5px 10px;background:rgba(255,255,255,.15)">🔗 Acceso para otra PC</a><button class="img" id="btnSalir" hidden>Salir</button></div>
+  <div class="usuario"><button class="img" id="btnUsuarios" hidden title="Crear y administrar usuarios">👥 Usuarios</button><button class="img" id="btnImg" title="Logo, fondo y logo de las certificaciones">🖼 Imágenes</button><button class="img" id="btnRespaldo" title="Hacer una copia de seguridad ahora">💾 Copia</button><span id="lblResp">Responsable</span><input id="usuario" placeholder="tu nombre"><span id="quien" hidden></span><button class="img" id="btnClave" hidden title="Cambiar mi contraseña">🔑</button><a class="img" id="btnKit" href="/instalar.bat" hidden title="Descargar el instalador del acceso directo para otra PC" style="text-decoration:none;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:5px 10px;background:rgba(255,255,255,.15)">🔗 Acceso para otra PC</a><button class="img" id="btnSalir" hidden>Salir</button></div>
 </header>
+<div class="banner" id="bannerConfig" role="alert"></div>
+<div class="banner" id="bannerRespaldo" role="status"></div>
 <div class="modal" id="modalUsuarios"><div class="caja" style="width:min(1000px,96vw)">
   <h2>Usuarios del programa</h2>
   <div style="font-size:12px;color:var(--gris);margin-bottom:8px"><b>Administrador</b>: todo, usuarios e imágenes · <b>Certificador</b>: subir archivos, armar, editar, confirmar y descargar · <b>Consulta</b>: solo ver y descargar.
@@ -177,7 +181,8 @@ const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAl
 // todo texto que viene de los Excel (nombres, remitos, observaciones) se muestra tal cual, sin interpretarlo como HTML
 const esc = v => String(v ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 const fmt = (v, d=2) => v==null ? "" : Number(v).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d});
-const pesos = v => v==null ? "" : "$ " + fmt(v, 2);
+const pesos = (v, moneda) => v==null ? "" : (moneda==="USD" ? "USD " : "$ ") + fmt(v, 2);
+const simbolo = m => m==="USD" ? "USD" : "$";
 const pct = v => v==null ? "" : fmt(v*100, 1) + " %";
 let GEN = null, ACTUAL = null, CTX = null;
 // cada pedido lleva el mes y lo elegido: varias personas pueden trabajar a la vez (con una sola numeración)
@@ -193,8 +198,33 @@ async function api(url, opt={}){
   if(!r.ok){ let m = r.statusText; try{ const j=await r.json(); m = j.detail || m }catch(e){}; m = String(m).replace(/<[^>]+>/g," "); throw new Error(m); }
   const j = await r.json();
   if(j && j.aviso) setTimeout(() => aviso(j.aviso, true), 3800);
+  if(j && j.config_estado) mostrarConfig(j.config_estado);
   return j;
 }
+// banner: config_proveedores.xlsx abierto en Excel (los cambios quedan pendientes y pasan solos al cerrarlo)
+function mostrarConfig(est){
+  const b = $("#bannerConfig");
+  if(est && est.bloqueado){ b.innerHTML = `<b>Config abierto en Excel.</b> ${esc(est.mensaje)}`; b.classList.add("on"); }
+  else { b.classList.remove("on"); if(est && est.resuelto) aviso(est.resuelto); }
+  if(est && est.respaldo) mostrarRespaldo(est.respaldo);
+}
+// copia de seguridad: aviso solo para quien la puede hacer (administrador, o la PC servidor sin inicio de sesión)
+const puedeRespaldar = () => !YO || !YO.login || YO.rol === "admin";
+function mostrarRespaldo(r){
+  const b = $("#bannerRespaldo");
+  $("#btnRespaldo").title = "Hacer una copia de seguridad ahora" + (r.ultimo ? ` (última: ${r.ultimo})` : "");
+  if(r.avisar && puedeRespaldar()){ b.innerHTML = `<b>Copia de seguridad.</b> ${esc(r.mensaje)} Tocá 💾 Copia arriba para hacerla ahora.`; b.classList.add("on"); }
+  else b.classList.remove("on");
+}
+$("#btnRespaldo").onclick = async () => {
+  if(!confirm("¿Hacer una copia de seguridad ahora? (tarda unos segundos)")) return;
+  const bt = $("#btnRespaldo"); bt.disabled = true; bt.textContent = "💾 Copiando…";
+  try { const r = await post("/api/respaldo", {}); mostrarRespaldo(r);
+    aviso(`✅ Copia hecha: respaldos\\${r.hecha.archivo} (${r.hecha.mb} MB)` + (r.hecha.afuera ? (r.hecha.afuera_ok ? " · también afuera" : " · ⚠ NO se pudo copiar afuera") : "")); }
+  catch(e){ aviso(e.message, true); }
+  bt.disabled = false; bt.textContent = "💾 Copia"; };
+async function revisarConfig(){ try { const r = await fetch("/api/estado_config"); if(r.ok) mostrarConfig(await r.json()); } catch(e){} }
+setInterval(() => { if(!document.hidden) revisarConfig(); }, 30000);
 const post = (url, body) => api(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
 
 // ---------- 1. archivos
@@ -246,13 +276,15 @@ $("#armar").onclick = async () => {
 function pintarGeneral(){
   $("#vacio").style.display = "none"; $("#resultado").style.display = "block";
   const cs = GEN.certs, n = e => cs.filter(c => c.estado===e).length;
-  const tn = cs.reduce((a,c)=>a+(c.tn||0),0), imp = cs.reduce((a,c)=>a+(c.importe||0),0);
+  const tn = cs.reduce((a,c)=>a+(c.tn||0),0);
+  const porMoneda = {}; cs.forEach(c => { const m = c.moneda || "ARS"; porMoneda[m] = (porMoneda[m]||0) + (c.importe||0); });
+  const imp = Object.entries(porMoneda).sort().map(([m,v]) => pesos(v, m)).join(" + ") || pesos(0);   // nunca se suman pesos con dólares
   const cuadra = GEN.cuadre.every(r => String(r.Resultado).includes("✔"));
   $("#kpis").innerHTML = [
     ["Certificaciones", cs.length, `${GEN.mes_nombre} ${GEN.anio} · 1ª quincena 1–${GEN.corte}`],
     ["Listas", n("LISTA"), "para confirmar"], ["Para revisar", n("REVISAR"), "observaciones del maestro"],
     ["Confirmadas", n("CONFIRMADA"), "próximo Nº " + GEN.proximo + ((!YO || !YO.login || YO.rol === "admin") ? ' <a href="#" id="cambiarNum" title="Cambiar el próximo número">cambiar</a>' : "")], ["Toneladas", fmt(tn), "en lo mostrado"],
-    ["Cuadre", cuadra ? "✔ cuadra" : "✖ revisar", pesos(imp) + " a facturar"]
+    ["Cuadre", cuadra ? "✔ cuadra" : "✖ revisar", imp + " a facturar"]
   ].map(([t,v,s]) => `<div class="kpi"><span>${t}</span><b>${v}</b><span>${s}</span></div>`).join("");
   const cn = $("#cambiarNum");
   if(cn) cn.onclick = async ev => { ev.preventDefault();
@@ -273,7 +305,7 @@ function pintarTabla(){
   $("#tabla tbody").innerHTML = filas.map(c => `<tr class="click" data-key="${encodeURIComponent(c.key)}">
     <td>${c.periodo}</td><td><b>${esc(c.razon)}</b>${c.formato==="MYM"?' <span class="puntos">· formato MyM</span>':''}
       <div class="puntos">${c.puntos.length>1 || c.puntos[0]!==c.proveedor ? "Puntos: "+esc(c.puntos.join(" · ")) : esc(c.proveedor)}</div></td>
-    <td class="n">${c.camiones}</td><td class="n">${fmt(c.tn)}</td><td class="n">${c.importe ? pesos(c.importe) : '<span class="puntos">falta precio</span>'}</td>
+    <td class="n">${c.camiones}</td><td class="n">${fmt(c.tn)}</td><td class="n">${c.importe ? pesos(c.importe, c.moneda) : '<span class="puntos">falta precio</span>'}</td>
     <td><span class="estado e-${c.estado}">${c.icono} ${c.estado}</span></td><td style="white-space:nowrap">${esc(c.numero||"")}</td>
     <td style="white-space:nowrap">${c.pdf?`<a class="arch" onclick="event.stopPropagation()" href="/api/descargar?ruta=${encodeURIComponent(c.pdf)}">PDF</a>`:""}${c.excel?`<a class="arch" onclick="event.stopPropagation()" href="/api/descargar?ruta=${encodeURIComponent(c.excel)}">Excel</a>`:""}</td></tr>`).join("") || `<tr><td colspan="8" class="vacio">Nada para mostrar con ese filtro.</td></tr>`;
   $$("#tabla tr.click").forEach(tr => tr.onclick = () => abrir(decodeURIComponent(tr.dataset.key)));
@@ -294,13 +326,13 @@ function pintarDetalle(){
   const desc = c.filas.map(f => {
     const conDesc = (f.desc_gran>0) || (f.desc_hum>0);
     const edG = f.producto==="CHIP" && !c.sin_gran, edH = (f.producto==="CHIP"||f.producto==="ASERRIN") && !c.sin_hum;
-    return `<tr class="${conDesc?"desc":""}"><td>${esc(f.fecha)}</td><td>${esc(f.rto)}</td><td class="puntos">${esc(f.punto)}</td><td>${esc(f.rto_prov)}</td><td>${esc(f.producto)}</td>
+    return `<tr class="${conDesc?"desc":""}"><td>${esc(f.fecha)}</td><td>${esc(f.rto)}</td><td class="puntos">${esc(f.punto)}</td><td>${esc(f.rto_prov)}</td><td>${esc(f.producto)}${(f.producto==="C LARGO"||f.producto==="C LARGO SECO") && c.formato!=="MYM" ? ` <label class="puntos" style="display:inline" title="Tablas secas: se paga con el precio de C. LARGO SECO"><input type="checkbox" class="seco" data-id="${esc(f.id)}" ${f.producto==="C LARGO SECO"?"checked":""}> seco</label>` : ""}</td>
       <td class="n">${fmt(f.kilos,0)}</td><td class="n">${pct(f.hum)}</td><td class="n">${pct(f.finos)}</td>
       <td class="n">${edH?`<input class="pct ${f.man_hum?"man":""}" data-id="${esc(f.id)}" data-t="hum" value="${fmt(f.desc_hum,2)}" title="${f.man_hum?"puesto a mano":"automático"}">`:""}</td>
       <td class="n">${edG?`<input class="pct ${f.man_gran?"man":""}" data-id="${esc(f.id)}" data-t="gran" value="${fmt(f.desc_gran,2)}" title="${f.man_gran?"puesto a mano":"automático"}">`:""}</td>
       <td class="n">${fmt(f.kilos_neto,1)}</td><td class="n">${f.aserrin>0?fmt(f.aserrin,1):""}</td></tr>`; }).join("");
   const precios = c.precios.map(p => `<tr><td><b>${esc(p.etiqueta)}</b></td><td class="precio"><input data-p="${esc(p.producto)}" value="${p.precio==null?"":fmt(p.precio,2)}" placeholder="completar"></td>
-      <td class="n">${p.entregado?fmt(p.tn):"—"}</td><td class="n">${p.entregado&&p.precio?pesos(p.subtotal):""}</td><td class="puntos">${esc(p.origen)}</td></tr>`).join("");
+      <td class="n">${p.entregado?fmt(p.tn):"—"}</td><td class="n">${p.entregado&&p.precio?pesos(p.subtotal, c.moneda):""}</td><td class="puntos">${esc(p.origen)}</td></tr>`).join("");
   const obs = c.obs.length ? `<ul class="obs">${[...new Set(c.obs.map(o => `<li class="${esc(o.sev)}">${o.rem?esc(o.rem)+" · ":""}${esc(o.msg)}</li>`))].join("")}</ul>` : '<span class="ok">✔ Sin observaciones</span>';
   $("#pCuerpo").innerHTML = `
     <h3>1 · Proveedor</h3>
@@ -313,11 +345,13 @@ function pintarDetalle(){
     <div class="puntos" style="margin-bottom:6px">Celdas celestes: % de descuento de cada camión (escribí otro valor o 0 para quitarlo; vacío = automático). Naranja = puesto a mano.</div>
     <table><thead><tr><th>Fecha</th><th>Rto planta</th><th>Punto</th><th>Rto prov.</th><th>Producto</th><th class="n">Kilos</th><th class="n">Humedad</th><th class="n">Granulom.</th>
       <th class="n">Desc. hum. %</th><th class="n">Desc. gran. %</th><th class="n">Kilos a pagar</th><th class="n">Aserrín</th></tr></thead><tbody>${desc}</tbody></table>
-    <h3>3 · Precios ($ por TN)</h3>
-    <table style="width:auto"><thead><tr><th>Producto</th><th>$ por TN</th><th class="n">TN a pagar</th><th class="n">Subtotal</th><th>Origen</th></tr></thead><tbody>${precios}</tbody></table>
+    <h3>3 · Precios (${simbolo(c.moneda)} por TN)${c.moneda==="USD"?' <span class="puntos">· este proveedor se certifica en dólares (columna MONEDA del config)</span>':""}</h3>
+    <table style="width:auto"><thead><tr><th>Producto</th><th>${simbolo(c.moneda)} por TN</th><th class="n">TN a pagar</th><th class="n">Subtotal</th><th>Origen</th></tr></thead><tbody>${precios}</tbody></table>
     <div class="fila" style="margin-top:8px"><label style="display:inline;color:var(--tinta)"><input type="radio" name="modo" value="prov" checked> Guardar para este proveedor (próximas certificaciones)</label>
       <label style="display:inline;color:var(--tinta)"><input type="radio" name="modo" value="esta"> Solo esta certificación</label></div>
-    <div style="margin:6px 0 4px">Importe a facturar: <span class="importe">${pesos(c.importe)}</span></div>
+    <div style="margin:6px 0 4px">Importe a facturar: <span class="importe">${pesos(c.importe, c.moneda)}</span></div>
+    <label style="margin-top:10px">Nota al pie (sale en el PDF y el Excel; ej. excedente o bonificación)</label>
+    <textarea id="dNota" rows="2" maxlength="600" style="width:100%" placeholder="(sin nota)">${esc(c.nota||"")}</textarea>
     <h3>4 · Observaciones</h3>${obs}
     ${c.criticas.length?`<label style="color:var(--tinta);margin-top:6px"><input type="checkbox" id="dRev" ${c.revisada?"checked":""}> Revisé las observaciones y la certificación es correcta</label>`:""}
     <h3>5 · Guardar y confirmar</h3>
@@ -335,7 +369,7 @@ const num = s => { s = String(s).trim().replace(/[%$\s]/g,""); if(s==="") return
 async function guardar(){ try { await _guardar(); } catch(e){ aviso(e.message, true); } }
 // arma lo que cambió en el panel; null si no hay nada pendiente de guardar
 function cambiosPendientes(){
-  const c = ACTUAL, body = {usuario:usuario(), motivo:$("#dMotivo").value, desc_gran:{}, desc_hum:{}, precios:{},
+  const c = ACTUAL, body = {usuario:usuario(), motivo:$("#dMotivo").value, desc_gran:{}, desc_hum:{}, precios:{}, secos:{},
     precios_solo_esta: $$("input[name=modo]:checked")[0].value==="esta"};
   if($("#dRazon").value !== c.razon) body.razon = $("#dRazon").value;
   if($("#dCuit").value !== (c.cuit||"")) body.cuit = $("#dCuit").value;
@@ -347,10 +381,14 @@ function cambiosPendientes(){
     const antes = i.dataset.t==="gran" ? f.desc_gran : f.desc_hum, man = i.dataset.t==="gran" ? f.man_gran : f.man_hum;
     if(v===null){ if(man) body[i.dataset.t==="gran"?"desc_gran":"desc_hum"][f.id] = null; }
     else if(Math.abs(v-(antes||0))>0.004) body[i.dataset.t==="gran"?"desc_gran":"desc_hum"][f.id] = v; });
+  $$("#pCuerpo input.seco").forEach(i => { const f = c.filas.find(x => x.id===i.dataset.id);
+    if(i.checked !== (f.producto==="C LARGO SECO")) body.secos[f.id] = i.checked; });
+  if($("#dNota") && $("#dNota").value.trim() !== (c.nota||"")) body.nota = $("#dNota").value.trim();
   $$("#pCuerpo input[data-p]").forEach(i => { const p = c.precios.find(x => x.producto===i.dataset.p); const v = num(i.value);
     if(v!==null && Math.abs(v-(p.precio||0))>0.001) body.precios[p.producto] = v; });
-  const hay = Object.keys(body).some(k => !["usuario","motivo","desc_gran","desc_hum","precios","precios_solo_esta"].includes(k))
-    || Object.keys(body.desc_gran).length || Object.keys(body.desc_hum).length || Object.keys(body.precios).length;
+  const hay = Object.keys(body).some(k => !["usuario","motivo","desc_gran","desc_hum","precios","precios_solo_esta","secos"].includes(k))
+    || Object.keys(body.desc_gran).length || Object.keys(body.desc_hum).length || Object.keys(body.precios).length
+    || Object.keys(body.secos).length;
   return hay ? body : null;
 }
 async function _guardar(){
@@ -416,7 +454,7 @@ async function cargarYo(){
   $("#usuario").hidden = true; $("#lblResp").hidden = true;
   const q = $("#quien"); q.hidden = false; q.innerHTML = `<b>${esc(YO.nombre)}</b> <span style="opacity:.8;font-size:12px">· ${esc(YO.rol_nombre)}</span>`;
   $("#btnSalir").hidden = false; $("#btnClave").hidden = false;
-  $("#btnUsuarios").hidden = YO.rol !== "admin"; $("#btnImg").hidden = YO.rol !== "admin"; $("#btnKit").hidden = false;
+  $("#btnUsuarios").hidden = YO.rol !== "admin"; $("#btnImg").hidden = YO.rol !== "admin"; $("#btnRespaldo").hidden = YO.rol !== "admin"; $("#btnKit").hidden = false;
   if(YO.rol === "consulta") document.body.classList.add("solo-consulta");
   if(YO.debe_cambiar) abrirClave(true);
 }
@@ -510,7 +548,7 @@ $("#bajarCfg").onclick = () => location.href = "/api/descargar_config";
 $("#actualizar").onclick = () => refrescar().then(() => aviso("Actualizado")).catch(e => aviso(e.message, true));
 
 const iniciar = () => api("/api/archivos").then(i => { if(i.maestro) pintarArchivos(i); }).catch(()=>{});
-cargarYo().then(() => { if(!(YO && YO.debe_cambiar)) iniciar(); });
+cargarYo().then(() => { if(!(YO && YO.debe_cambiar)){ iniciar(); revisarConfig(); } });
 </script>
 </body>
 </html>

@@ -1,11 +1,13 @@
-CERTIFICACIONES DE BIOMASA - VERSIÓN WEB
-=======================================
+CERTIFICACIONES DE BIOMASA - VERSIÓN WEB 3.0.1
+=============================================
 
 Qué es: el mismo programa del cuaderno de Colab, pero como una página web que corre en tu PC.
   - servidor.py      → la API (el "motor": lee el maestro, calcula, genera PDF y Excel)
   - index.html       → la página que ves en el navegador
-  - cert_biomasa.py y editor_colab.py → el motor de cálculo (los mismos del cuaderno)
-  - config_proveedores.xlsx → CUIT, precios, frecuencia, reglas especiales por proveedor
+  - carpeta motor\  → el motor de cálculo, en 13 archivos chicos (descuentos, lectura, laboratorio, armado,
+                      pdf, excel…). cert_biomasa.py es la puerta de entrada al motor; editor_colab.py lleva
+                      el estado de cada mes.
+  - config_proveedores.xlsx → CUIT, precios, frecuencia, reglas por proveedor
 
 Poné TODOS estos archivos en una misma carpeta.
 
@@ -34,7 +36,7 @@ Imágenes personalizadas: botón "🖼 Imágenes" (arriba a la derecha).
   - Logo del programa: se ve arriba a la izquierda y en la pestaña del navegador.
   - Fondo del encabezado: una foto (por ejemplo del parque) detrás del título, con un velo verde para que se lea.
   - Fondo de la página: el logo o una imagen, muy suave detrás de todo (marca de agua).
-  - Color del programa: elegí uno, o "Usar el color del logo" (por ejemplo el color de la marca de tu empresa).
+  - Color del programa: elegí uno, o "Usar el color del logo" (por ejemplo el color de tu empresa).
   - Logo de las certificaciones: el que sale en los PDF y Excel nuevos (las ya confirmadas no cambian).
   PNG, JPG o WEBP de hasta 5 MB; se guardan en la carpeta "imagenes" y las ven todas las PC.
   "Quitar" vuelve a lo de siempre.
@@ -52,7 +54,36 @@ SEGURIDAD
 - Si cerrás el programa, al volver a abrirlo retoma los archivos y las certificaciones confirmadas
   (carpeta "trabajo"). El config que se va actualizando (CUIT, precios, numeración) queda en
   trabajo\config_proveedores.xlsx y tiene respaldos automáticos en trabajo\config_respaldos.
-- Copia de seguridad: copiá de vez en cuando la carpeta "trabajo" a un pendrive o a Drive.
+- Si config_proveedores.xlsx está abierto en Excel, los cambios se guardan en
+  trabajo\config_proveedores_PENDIENTE.xlsx y la página muestra un aviso naranja. Al cerrar el Excel,
+  en menos de un minuto pasan solos al config (si se había editado en Excel, esa versión queda en config_respaldos).
+- Copia de seguridad AUTOMÁTICA una vez por día en respaldos\ (últimas 30). Para guardar también afuera de
+  la PC, poné una carpeta (disco externo, red, Drive) en trabajo\respaldo_destino.txt.
+
+ACCESO DIRECTO CON EL LOGO (en la PC donde corre el programa)
+------------------------------------------------------------
+Abrí CREAR_ACCESO_DIRECTO.bat y elegí 1 (PC servidor de la red) o 2 (solo esta PC). Queda
+"Certificaciones de biomasa" con el logo en el escritorio y en el menú Inicio (desde ahí: clic derecho →
+"Anclar a la barra de tareas"). Si el programa ya está funcionando, el acceso solo abre el navegador.
+Las otras PC de la red usan su propio acceso (INSTALAR_ACCESO_CERTIFICACIONES.bat de PARA_LAS_OTRAS_PC).
+
+SIN INSTALAR PYTHON: ver LEEME_PORTATIL.txt.
+
+ACTUALIZAR A UNA VERSIÓN NUEVA (desde la 2.1 o cualquier versión anterior)
+---------------------------------------------------------------------------
+No copies archivos a mano: lo hace ACTUALIZAR_PROGRAMA.bat, sin tocar tus datos.
+  1. Descomprimí el zip nuevo en una carpeta APARTE (por ejemplo al lado de Sistema_web).
+  2. Cerrá la ventana negra del servidor.
+  3. Abrí ACTUALIZAR_PROGRAMA.bat de la carpeta nueva y escribí SI. Solo:
+       - compara la versión nueva con la tuya usando tus últimos 6 meses: si da UNA diferencia, no cambia nada;
+       - hace copia de seguridad de "trabajo" (respaldos\) y del programa viejo (versiones_anteriores\);
+       - copia solo los archivos del programa: NUNCA toca "trabajo" (meses, certificaciones, numeración,
+         usuarios, config con tus cambios), ni tus imágenes;
+       - corre las pruebas; si alguna falla, vuelve solo a la versión anterior.
+     Si no encuentra Sistema_web te pregunta la carpeta (arrastrala a la ventana y Enter).
+  4. Abrí el programa como siempre. Arriba de la ventana negra tiene que decir la versión nueva.
+Para volver atrás: cerrá el servidor y abrí VOLVER_A_VERSION_ANTERIOR.bat (en Sistema_web).
+Lo que pasó queda anotado en actualizar_registro.txt.
 
 USO DESDE VARIAS PC DE LA RED (5, 10 o más)
 -------------------------------------------
@@ -100,15 +131,35 @@ Seguridad en red:
   - 5 contraseñas mal seguidas → ese usuario queda bloqueado 15 minutos en esa PC.
   - La sesión se cierra sola tras 1 hora sin uso (y a las 12 horas como máximo).
   - Quién confirma queda registrado con su usuario (no se puede firmar por otro).
-  - Registro de ingresos: trabajo\accesos.log. Usuarios: trabajo\usuarios.json (contraseñas cifradas).
+  - Registro de ingresos: trabajo\accesos.log. Usuarios y sesiones: trabajo\biomasa.db (base SQLite; contraseñas cifradas).
+    La primera vez se pasan solos los usuarios de usuarios.json (queda como usuarios.json.migrado).
   - Si el administrador olvida su contraseña: RESTABLECER_ADMIN.bat en la PC servidor.
   - El archivo clave_red.txt de la versión anterior ya no se usa: se puede borrar.
+  - Lista blanca de PC: solo entran las IP o redes de trabajo\ips_autorizadas.txt (se crea sola con
+    127.0.0.1, 192.168.1.0/24 y 10.0.0.0/8). Una PC por línea (192.168.1.50) o una red (192.168.1.0/24).
+    Los cambios valen al instante. Las demás reciben "Acceso denegado desde esta ubicación" y queda en accesos.log.
+    La PC servidor siempre puede entrar.
   - No lo publiques en internet (no abrir el puerto en el router). Para entrar desde afuera, VPN de la empresa.
   - Las descargas solo entregan archivos de la carpeta "trabajo".
 
-Copias de seguridad:
-  - COPIA_DE_SEGURIDAD.bat copia "trabajo" a "respaldos\fecha_hora". Conviene hacerla todos los días
-    (se puede programar en el Programador de tareas de Windows) y guardar una copia fuera de la PC.
+Copias de seguridad (automáticas):
+  - Mientras el programa está abierto hace SOLO una copia por día en Sistema_web\respaldos (guarda las últimas 30).
+  - MUY recomendado: escribir en trabajo\respaldo_destino.txt una carpeta FUERA de esta PC (disco externo,
+    carpeta compartida de la red o la carpeta de Google Drive/OneDrive): cada copia se guarda también ahí.
+  - Botón 💾 Copia (administrador) o COPIA_DE_SEGURIDAD.bat: hace una copia al momento.
+  - Si pasan 2 días sin copia o falla la de afuera, la página lo avisa.
+  - Para restaurar: ver LEEME_RESPALDO.txt dentro de cada zip.
+
+Pruebas automáticas:
+  - PROBAR_PROGRAMA.bat (en la PC servidor, después de instalar o actualizar): prueba cálculos, seguridad,
+    usuarios, config abierto en Excel, copias y un mes completo con tus últimos archivos. No cambia nada real.
+    Tiene que terminar en "TODO BIEN". El resultado queda en la carpeta pruebas.
+
+Precios en dólares, C. largo seco y nota al pie:
+  - Columna MONEDA del config: vacío = pesos; USD = dólares (la certificación sale en USD). Los totales nunca
+    mezclan pesos con dólares.
+  - En el detalle, un camión de C. LARGO se puede tildar "seco": se paga con el precio de C LARGO SECO.
+  - "Nota al pie" en el detalle: sale en el PDF y el Excel (ej. excedente o bonificación).
 
 Si la ventana negra se cierra sola:
   - Ahora no se cierra: muestra el error y espera una tecla. Leé el mensaje (o sacale una foto).

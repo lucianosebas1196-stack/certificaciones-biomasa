@@ -1,0 +1,28 @@
+CERTIFICACIONES DE BIOMASA 3.0 - VERSIÓN PORTÁTIL (sin instalar Python)
+=========================================================================
+
+Esta carpeta trae su propio Python con todas las librerías del programa. No hace falta instalar Python ni
+nada en Windows. Funciona en cualquier Windows 10 u 11 de 64 bits.
+
+PRIMERA VEZ (en una PC con internet)
+  1. Descomprimí el zip (clic derecho → "Extraer todo"). No lo abras desde adentro del zip.
+  2. Abrí INICIAR_WEB.bat (o INICIAR_WEB_RED.bat en la PC servidor).
+  3. La primera vez baja de python.org el Python oficial (unos 11 MB, menos de un minuto) y lo deja en la
+     carpeta "python". Dice "Listo: Python portatil preparado" y abre el programa.
+  Desde ahí la carpeta ya está completa: se puede copiar a un pendrive o a otra PC y anda sin internet.
+
+SI LA PC NO TIENE INTERNET
+  En otra PC bajá de https://www.python.org/downloads/windows/ el "Windows embeddable package (64-bit)" de
+  Python 3.13, copialo a esta carpeta con el nombre python-embed.zip y abrí INICIAR_WEB.bat.
+  (O prepará la carpeta en una PC con internet y después copiala entera.)
+
+PASAR LA PC SERVIDOR A PORTÁTIL
+  Con ACTUALIZAR_PROGRAMA.bat de esta carpeta, igual que siempre: además de actualizar, copia la carpeta
+  "python" a Sistema_web. Desde ahí el servidor usa su propio Python y no se rompe si alguien cambia o
+  desinstala el Python de la PC. Tus datos (carpeta trabajo) no se tocan.
+
+LAS OTRAS PC DE LA RED NO NECESITAN ESTO
+  Solo usan el navegador: alcanza con INSTALAR_ACCESO_CERTIFICACIONES.bat de la carpeta PARA_LAS_OTRAS_PC.
+
+QUÉ USA CADA .bat
+  Si existe la carpeta python con python.exe → usa ese. Si no, usa el Python instalado en la PC (como antes).
