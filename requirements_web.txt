@@ -1,10 +1,16 @@
-fastapi
-uvicorn
-python-multipart
-pandas
-pyxlsb
-openpyxl
-reportlab
-ipywidgets
-pypdf
-cryptography
+# Versiones exactas probadas con la version 3.0 (Python 3.11 a 3.13)
+fastapi==0.142.2
+starlette==1.6.0
+uvicorn==0.53.0
+python-multipart==0.0.32
+pydantic==2.13.5
+anyio==4.15.1
+pandas==3.0.5
+numpy==2.5.3
+pyxlsb==1.0.10
+openpyxl==3.1.5
+reportlab==5.0.1
+pypdf==5.9.0
+Pillow==12.3.0
+cryptography==50.0.1
+ipywidgets==8.1.9

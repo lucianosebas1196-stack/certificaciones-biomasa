@@ -57,7 +57,7 @@ TRABAJO.mkdir(exist_ok=True)
 
 # Seguridad -------------------------------------------------------------------
 # · Sin --red el programa escucha solo en esta PC (127.0.0.1) y no pide usuario.
-# · Con --red: cada persona entra con SU usuario y contraseña (guardadas cifradas en trabajo/usuarios.json),
+# · Con --red: cada persona entra con SU usuario y contraseña (guardadas cifradas en trabajo/biomasa.db),
 #   con roles, sesión que se cierra sola por inactividad, bloqueo tras varios intentos fallidos, registro de
 #   ingresos (trabajo/accesos.log) y conexión cifrada HTTPS (certificado propio en trabajo/certificado).
 USUARIOS = TRABAJO / "usuarios.json"
@@ -72,7 +72,6 @@ ITERACIONES = 240_000
 COOKIE = "cert_sesion"
 LOGIN_ACTIVO = False             # se activa con --red
 USAR_HTTPS = False
-SESIONES = {}                    # token → {"u", "creada", "ultima", "ip"}
 FALLOS = {}                      # (usuario, ip) → [momentos de los intentos fallidos]
 _USUARIO_ACTUAL = contextvars.ContextVar("usuario_actual", default=None)
 _LOCK_USUARIOS = threading.RLock()
@@ -83,17 +82,13 @@ def _hash(clave, sal):
     return hashlib.pbkdf2_hmac("sha256", clave.encode("utf-8"), bytes.fromhex(sal), ITERACIONES).hex()
 
 
-def _leer_usuarios():
-    try:
-        return json.loads(USUARIOS.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-
-def _guardar_usuarios(us):
-    tmp = USUARIOS.with_suffix(".tmp")
-    tmp.write_text(json.dumps(us, ensure_ascii=False, indent=1), encoding="utf-8")
-    os.replace(tmp, USUARIOS)
+# Usuarios y sesiones en SQLite (trabajo/biomasa.db): transacciones ACID, modo WAL y consultas parametrizadas.
+# La primera vez se pasan solos los usuarios de usuarios.json (queda como usuarios.json.migrado).
+import almacen_db as db
+db.configurar(TRABAJO / "biomasa.db", json_viejo=USUARIOS, inactividad=INACTIVIDAD, duracion_max=DURACION_MAX)
+_leer_usuarios = db.leer_usuarios          # {"usuario": {"nombre", "rol", "activo", ...}} como antes
+_guardar_usuarios = db.guardar_usuarios    # recibe el diccionario completo, se guarda en una sola transacción
+SESIONES = db.Sesiones()                   # token → {"u", "creada", "ultima", "ip"} (en la base, no en memoria)
 
 
 def _validar_clave(clave, usuario=""):
@@ -132,7 +127,7 @@ def _quien(nombre_enviado):
 
 
 def _rol_necesario(metodo, ruta):
-    if ruta.startswith("/api/usuarios") or ruta == "/api/numeracion" or (ruta.startswith("/api/imagen/") and metodo != "GET") \
+    if ruta.startswith("/api/usuarios") or ruta in ("/api/numeracion", "/api/respaldo") or (ruta.startswith("/api/imagen/") and metodo != "GET") \
             or (ruta == "/api/tema" and metodo != "GET"):
         return "admin"
     if (metodo in ("GET", "HEAD") and ruta != "/api/descargar_config") or ruta in ("/api/armar", "/api/logout", "/api/clave"):
@@ -146,22 +141,18 @@ SIN_CAMBIO_CLAVE = {"/", "/api/yo", "/api/clave", "/api/logout", "/api/tema", "/
 
 def _sesion_de(request):
     token = request.cookies.get(COOKIE)
-    ses = SESIONES.get(token) if token else None
+    ses = SESIONES.get(token) if token else None        # None también si venció (se borra sola)
     if not ses:
-        return None, None
-    ahora = time.time()
-    if ahora - ses["ultima"] > INACTIVIDAD or ahora - ses["creada"] > DURACION_MAX:
-        SESIONES.pop(token, None)
         return None, None
     us = _leer_usuarios().get(ses["u"])
     if not us or not us.get("activo", True):
         SESIONES.pop(token, None)
         return None, None
-    ses["ultima"] = ahora
+    SESIONES.tocar(token)                                  # reinicia el contador de inactividad
     return token, dict(us, usuario=ses["u"])
 
 
-app_web = FastAPI(title="Certificaciones de biomasa", version="1.2",
+app_web = FastAPI(title="Certificaciones de biomasa", version="3.0.1",
                   docs_url=None, redoc_url=None, openapi_url=None)
 # Un solo cambio a la vez: evita, por ejemplo, que un doble clic en "Confirmar" use dos números correlativos
 CANDADO = threading.RLock()
@@ -194,10 +185,30 @@ from contextlib import asynccontextmanager      # noqa: E402
 async def _ciclo_de_vida(app):
     """Lo que se hace al arrancar el servidor (forma actual de FastAPI; reemplaza a on_event("startup"))."""
     await _silenciar_cortes()
+    GUARDADO.sincronizar()                    # si quedó algo pendiente de antes, se intenta pasar ya
+    GUARDADO.iniciar_sincronizacion()         # y después cada 60 segundos, en un hilo aparte
+    RESPALDO.iniciar_automatico()             # copia de seguridad: una por día, sola
     yield
+    GUARDADO.detener()
+    RESPALDO.detener()
 
 
 app_web.router.lifespan_context = _ciclo_de_vida
+
+
+def _error_inesperado(request, exc):
+    """En vez del 'Internal Server Error' pelado: dice qué pasó y deja el detalle en trabajo/errores.log."""
+    import traceback
+    from fastapi.responses import JSONResponse
+    try:
+        with open(TRABAJO / "errores.log", "a", encoding="utf-8") as f:
+            f.write(f"\n=== {time.strftime('%Y-%m-%d %H:%M:%S')} {request.method} {request.url.path}\n")
+            f.write("".join(traceback.format_exception(type(exc), exc, exc.__traceback__)))
+    except Exception:
+        pass
+    traceback.print_exception(type(exc), exc, exc.__traceback__)
+    return JSONResponse(status_code=500, content={"detail": f"Error inesperado ({type(exc).__name__}: {exc}). "
+                                                            "El detalle quedó en trabajo\\errores.log: mandáselo a soporte."})
 
 
 @app_web.middleware("http")
@@ -230,7 +241,10 @@ async def _seguridad(request, call_next):
             return JSONResponse({"detail": f"Tu usuario ({NOMBRE_ROL.get(us.get('rol'), us.get('rol'))}) "
                                            "no tiene permiso para hacer esto."}, status_code=403)
         _USUARIO_ACTUAL.set(us)
-    r = await call_next(request)
+    try:
+        r = await call_next(request)
+    except Exception as exc:              # error no previsto: respuesta clara y queda anotado
+        r = _error_inesperado(request, exc)
     r.headers["X-Content-Type-Options"] = "nosniff"
     r.headers["X-Frame-Options"] = "DENY"
     r.headers["Referrer-Policy"] = "same-origin"
@@ -420,8 +434,7 @@ def modificar_usuario(usuario: str, c: CambioUsuario):
         todos[u] = reg
         _guardar_usuarios(todos)
     if (c.activo is False or c.clave or c.rol is not None) and not (yo_ and u == yo_["usuario"]):
-        for t in [t for t, s_ in SESIONES.items() if s_["u"] == u]:      # se le cierran las sesiones abiertas
-            SESIONES.pop(t, None)
+        SESIONES.cerrar_de(u)                                          # se le cierran las sesiones abiertas
     _registrar_acceso(u, "-", f"USUARIO MODIFICADO por {yo_['usuario'] if yo_ else '?'}: " +
                       ", ".join(k for k, v in c.model_dump().items() if v is not None and k != "clave") +
                       (" + contraseña restablecida" if c.clave else ""))
@@ -572,6 +585,13 @@ def _ips_locales():
         return []
 
 
+# Lista blanca de IP (trabajo/ips_autorizadas.txt): se registra DESPUÉS de _seguridad para que atienda PRIMERO.
+# Una PC que no está en la lista recibe 403 "Acceso denegado desde esta ubicación" antes de llegar al login.
+import lista_blanca
+LISTA_BLANCA = lista_blanca.instalar(app_web, TRABAJO / "ips_autorizadas.txt", en_red=lambda: EN_RED,
+                                     ips_propias=lambda: _ips_locales(), registrar=lambda u, ip, r: _registrar_acceso(u, ip, r))
+
+
 def _preparar_certificado():
     """Crea (una sola vez) una autoridad certificante propia y, con ella, el certificado del servidor con el
     nombre de la PC y sus IP. Si la IP cambia, el certificado del servidor se rehace solo (la autoridad no cambia,
@@ -648,6 +668,27 @@ def _preparar_certificado():
     return srv_crt, srv_key
 
 
+def _confiar_en_esta_pc():
+    """En Windows: si esta PC (el servidor) todavía no confía en el certificado de la empresa, lo instala para el
+    usuario actual (Windows muestra una ventana: hay que elegir Sí). Así el navegador del servidor no avisa
+    'La conexión no es privada'. Las otras PC lo instalan con INSTALAR_ACCESO_CERTIFICACIONES.bat."""
+    if os.name != "nt":
+        return
+    import subprocess
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes
+    ca = CARPETA_CERT / "autoridad.crt"
+    try:
+        huella = x509.load_pem_x509_certificate(ca.read_bytes()).fingerprint(hashes.SHA1()).hex()
+        r = subprocess.run(["certutil", "-user", "-verifystore", "Root", huella], capture_output=True)
+        if r.returncode == 0:
+            return
+        print("Instalando el certificado de la empresa en esta PC: si Windows pregunta, elegí Sí.")
+        subprocess.run(["certutil", "-user", "-addstore", "Root", str(ca)], capture_output=True)
+    except Exception as e:                              # no es crítico: se puede instalar con el .bat
+        print("No pude instalar el certificado en esta PC:", e)
+
+
 @app_web.get("/certificado.crt")
 def bajar_certificado():
     r = CARPETA_CERT / "autoridad.crt"
@@ -693,6 +734,27 @@ S = Sesion()
 SESION = TRABAJO / "sesion.json"
 CONFIG_TRABAJO = TRABAJO / "config_proveedores.xlsx"     # el config con todos los cambios hechos acá
 
+# Guardado del config a prueba de Excel abierto: si el archivo está bloqueado, lo guardado queda en
+# trabajo/config_proveedores_PENDIENTE.xlsx (+ bandera .json) y un hilo lo pasa solo al cerrarse el Excel.
+# Se reemplaza cb.guardar_config: así editor_colab (guardar_estado) y el resto del servidor usan esto sin cambios.
+import guardado_config
+GUARDADO = guardado_config.GuardadoConfig(CONFIG_TRABAJO, escribir=cb.guardar_config,
+                                          registrar=lambda t: _registrar_acceso("-", "servidor", t))
+cb.guardar_config = GUARDADO.envolver(cb.guardar_config)
+
+# Copia de seguridad automática: una por día en Sistema_web/respaldos (últimas 30) y, si trabajo/respaldo_destino.txt
+# tiene una carpeta (disco externo, red, Google Drive), también ahí.
+import respaldo
+RESPALDO = respaldo.Respaldo(TRABAJO, AQUI / "respaldos")
+if not RESPALDO.config_destino.exists():
+    try:
+        RESPALDO.config_destino.write_text(
+            "# Carpeta FUERA de esta PC donde guardar también cada copia de seguridad (una sola línea, sin #).\n"
+            "# Ejemplos:  E:\\Respaldos_certificaciones      \\\\SERVIDOR\\Compartido\\Certificaciones\n"
+            "#            C:\\Users\\NOMBRE\\Google Drive\\Respaldos certificaciones\n", encoding="utf-8")
+    except OSError:
+        pass
+
 
 def _guardar_sesion():
     SESION.write_text(json.dumps({k: str(v) for k, v in S.archivos.items()}, ensure_ascii=False, indent=1),
@@ -701,7 +763,7 @@ def _guardar_sesion():
 
 def _ruta_config():
     """El config más nuevo: el que se subió o el que el programa fue actualizando (CUIT, precios, numeración)."""
-    cands = [r for r in (S.archivos.get("config"), CONFIG_TRABAJO) if r and Path(r).exists()]
+    cands = [r for r in (S.archivos.get("config"), CONFIG_TRABAJO, GUARDADO.pendiente) if r and Path(r).exists()]
     return max(cands, key=lambda r: Path(r).stat().st_mtime) if cands else None
 
 
@@ -819,6 +881,7 @@ def _resumen_cert(c):
     return {"key": c["key"], "periodo": c["periodo"], "proveedor": c["proveedor"], "razon": c["razon"],
             "cuit": c["cuit"], "estado": c["estado"], "icono": cb.ICONOS[c["estado"]], "numero": c["numero"],
             "tn": _num(c["tn"]), "importe": _num(c["importe"]), "formato": c.get("formato") or "GENERAL",
+            "moneda": c.get("moneda", "ARS"),
             "camiones": int(len(c["filas"])), "puntos": sorted(set(c["filas"]["Proveedor"])),
             "con_desc": int((c["filas"]["DescKg"] > 0).sum() + (c["filas"]["Pen"] > 0).sum()),
             "pdf": (S.app.estado["meta"].get(c["key"], {}).get("pdf") if c["estado"] == "CONFIRMADA" else None),
@@ -852,7 +915,7 @@ def _detalle(c):
                 frecuencia=cb.frecuencia(a.conf, c["proveedor"]), sin_gran=bool(c.get("sin_gran")),
                 sin_hum=bool(c.get("sin_hum")), desde=c["desde"].strftime("%d/%m/%Y"),
                 hasta=c["hasta"].strftime("%d/%m/%Y"), fecha=c["fecha"].strftime("%d/%m/%Y"),
-                tol_finos=c.get("tol_finos"), pdf=meta.get("pdf"), excel=meta.get("excel"))
+                tol_finos=c.get("tol_finos"), pdf=meta.get("pdf"), excel=meta.get("excel"), nota=c.get("nota", ""))
 
 
 def _corresponde(c, periodos=None, proveedor=None):
@@ -1063,9 +1126,10 @@ def pagina():
 @app_web.post("/api/archivos")
 async def subir(archivos: list[UploadFile] = File(...)):
     """Sube maestro (.xlsb), planilla de calidad, config y estado (opcionales). Se reconocen por su contenido."""
+    import anyio
     carpeta = TRABAJO / "subidos"
     carpeta.mkdir(exist_ok=True)
-    tipos = {}
+    recibidos = []
     for f in archivos:
         nombre = Path(f.filename or "").name
         if Path(nombre).suffix.lower() not in EXTENSIONES:
@@ -1073,25 +1137,77 @@ async def subir(archivos: list[UploadFile] = File(...)):
         datos = await f.read()
         if len(datos) > MAX_MB * 1024 * 1024:
             raise HTTPException(400, f"'{nombre}' pesa más de {MAX_MB} MB.")
-        ruta = carpeta / nombre
+        recibidos.append((nombre, datos))
+    # Leer el maestro tarda 10-20 s: se hace en un hilo aparte y FUERA del candado, así las otras PC siguen
+    # trabajando (abrir, editar, confirmar) mientras tanto. Solo el cambio final de archivos usa el candado.
+    return await anyio.to_thread.run_sync(_procesar_subida, carpeta, recibidos)
+
+
+def _procesar_subida(carpeta, recibidos):
+    tipos = {}
+    for nombre, datos in recibidos:
+        ruta = carpeta / f".subiendo_{nombre}"          # se escribe aparte: el archivo en uso no se pisa hasta el final
         ruta.write_bytes(datos)
         try:
-            tipos[ruta.name] = (cb.tipo_archivo(str(ruta)), ruta)
+            tipos[nombre] = (cb.tipo_archivo(str(ruta)), ruta)
         except Exception:
-            tipos[ruta.name] = (None, ruta)
+            tipos[nombre] = (None, ruta)
+    leidos = {}
+    nombre = "el archivo"
+    try:
+        for nombre, (tipo, ruta) in tipos.items():
+            if tipo == "maestro":
+                leidos["maestro"] = cb.leer_maestro(str(ruta))
+            elif tipo == "calidad":
+                leidos["calidad"] = cb.leer_humedad(str(ruta))
+    except Exception as e:
+        for _, ruta in tipos.values():
+            ruta.unlink(missing_ok=True)
+        raise HTTPException(400, f"No pude leer '{nombre}' ({type(e).__name__}: {e}). ¿Es el archivo correcto y no está "
+                                 "dañado? Probá abrirlo en Excel, guardarlo y volver a subirlo. No se cambió nada.")
     with CANDADO:
-        return _cargar(tipos)
+        final = {}
+        for nombre, (tipo, ruta) in tipos.items():
+            destino = carpeta / nombre
+            try:
+                _reemplazar(ruta, destino)
+            except PermissionError:
+                for _, r in tipos.values():
+                    r.unlink(missing_ok=True)
+                raise HTTPException(423, f"No pude guardar '{nombre}': ese archivo está abierto en otro programa "
+                                         f"(trabajo\\subidos\\{nombre}). Cerralo y volvé a subirlo.")
+            final[nombre] = (tipo, destino)
+        return _cargar(final, leidos)
 
 
-def _cargar(tipos):
+def _reemplazar(origen, destino):
+    """os.replace con reintentos: en Windows un antivirus o el indexador pueden tener el archivo abierto un
+    instante. Si no se puede renombrar, se copia el contenido encima (sirve si el destino solo está en lectura)."""
+    import gc, shutil
+    for intento in range(5):
+        try:
+            os.replace(origen, destino)
+            return
+        except PermissionError:
+            gc.collect()                              # suelta archivos que hayan quedado abiertos en este programa
+            time.sleep(0.3 * (intento + 1))
+    shutil.copyfile(origen, destino)                  # si también falla, sale PermissionError y se avisa
+    try:
+        os.remove(origen)
+    except OSError:
+        pass
+
+
+def _cargar(tipos, leidos=None):
+    leidos = leidos or {}
     for nombre, (tipo, ruta) in tipos.items():
         if tipo:
             S.archivos[tipo] = ruta
     _guardar_sesion()
     if "maestro" in [t for t, _ in tipos.values()]:
-        S.maestro = cb.leer_maestro(str(S.archivos["maestro"]))
+        S.maestro = leidos["maestro"] if "maestro" in leidos else cb.leer_maestro(str(S.archivos["maestro"]))
     if "calidad" in [t for t, _ in tipos.values()]:
-        S.humedad = cb.leer_humedad(str(S.archivos["calidad"]))
+        S.humedad = leidos["calidad"] if "calidad" in leidos else cb.leer_humedad(str(S.archivos["calidad"]))
     if "config" in [t for t, _ in tipos.values()]:
         S.conf, S.precios, S.par = cb.leer_config(str(S.archivos["config"]))      # el que se acaba de subir
         _numeracion_al_dia()
@@ -1218,10 +1334,14 @@ def _guardado_seguro(a):
 
 
 def _con_aviso(r):
-    """Agrega a la respuesta un aviso pendiente (por ejemplo config abierto en Excel)."""
+    """Agrega a la respuesta un aviso pendiente y el estado del config (bloqueado en Excel → banner)."""
     aviso, S.aviso = getattr(S, "aviso", None), None
-    if aviso and isinstance(r, dict):
-        r = dict(r, aviso=aviso)
+    if isinstance(r, dict):
+        if aviso:
+            r = dict(r, aviso=aviso)
+        est = GUARDADO.estado()
+        if est.get("bloqueado") or est.get("resuelto"):
+            r = dict(r, config_estado=est)
     return r
 
 
@@ -1258,6 +1378,8 @@ class Cambios(BaseModel):
     precios: dict[str, float] = {}               # producto → $ por TN
     precios_solo_esta: bool = False
     revisada: bool = False
+    secos: dict[str, bool] = {}                  # _id de un camión de C LARGO → True = "seco" (tablas, otro precio)
+    nota: str | None = None                      # nota al pie de la certificación (None = no cambia)
 
 
 @app_web.post("/api/certificacion")
@@ -1300,6 +1422,15 @@ def _guardar(key, cb_, periodos=None, proveedor=None):
     for t, v in cb_.precios.items():
         if v is not None and (v < 0 or v > 1e9):
             raise HTTPException(400, f"Precio de {t} fuera de rango.")
+    for _id, seco in cb_.secos.items():
+        if _id not in ids:
+            raise HTTPException(409, "Un camión de esta certificación cambió (otro usuario la modificó): tocá ↻ y volvé a cargar.")
+        if producto[_id] not in (cb.LARGO, cb.SECO):
+            raise HTTPException(400, f"Solo un camión de C. LARGO se puede marcar como seco (ese es {producto[_id]}).")
+        if c.get("formato") == "MYM":
+            raise HTTPException(400, "El formato MyM no tiene C. LARGO SECO.")
+    if cb_.nota is not None and len(cb_.nota) > 600:
+        raise HTTPException(400, "La nota al pie es muy larga (máximo 600 caracteres).")
     if cb_.frecuencia is not None:
         cb_.frecuencia = cb_.frecuencia.strip().upper()
         if cb_.frecuencia not in cb.FRECUENCIAS:
@@ -1321,6 +1452,26 @@ def _guardar(key, cb_, periodos=None, proveedor=None):
             else:
                 corr.setdefault(destino, {})[_id] = v * escala
             a._log(f"{campo} a mano (web)", key, rem, campo, "", "automático" if v is None else f"{v:g} %", cb_.motivo)
+    for _id, seco in cb_.secos.items():          # C LARGO ↔ C LARGO SECO: corrección del producto de ese camión
+        nuevo = cb.SECO if seco else cb.LARGO
+        if producto[_id] == nuevo:
+            continue
+        original = a.d0.loc[a.d0["_id"] == _id, cb.C_TIPO]
+        ed = corr.setdefault("editados", {}).setdefault(_id, {})
+        if len(original) and str(original.iloc[0]) == nuevo:
+            ed.pop("Producto", None)                 # vuelve a lo que dice el maestro
+            if not ed:
+                corr["editados"].pop(_id, None)
+        else:
+            ed["Producto"] = nuevo
+        rem = c["filas"].set_index("_id").loc[_id, "Rto. Planta"]
+        a._log("Producto (web)", key, rem, "Producto", producto[_id], nuevo, cb_.motivo)
+    if cb_.nota is not None and cb_.nota.strip() != str(meta.get("nota") or ""):
+        a._log("Nota al pie (web)", key, "", "Nota", meta.get("nota", ""), cb_.nota.strip())
+        if cb_.nota.strip():
+            meta["nota"] = cb_.nota.strip()
+        else:
+            meta.pop("nota", None)
     for k, v in (("sin_gran", cb_.sin_gran), ("sin_hum", cb_.sin_hum)):
         if v is not None and v != bool(meta.get(k)):
             if v:
@@ -1540,26 +1691,35 @@ def descargar_juntas(anio: int, mes: int, tipo: str = "pdf", periodos: str = "",
             wb = Workbook()
             ix = wb.active
             ix.title = "Índice"
-            ix.append(["N° Certificación", "Período", "Proveedor", "Razón social", "Camiones", "TN", "Importe", "Hoja"])
+            ix.append(["N° Certificación", "Período", "Proveedor", "Razón social", "Camiones", "TN", "Importe", "Hoja", "Moneda"])
             usados = {"índice"}
             for c in certs:
                 hoja = cb._nombre_hoja(f"{c['periodo']} {c['proveedor']}", usados)
                 cb._hoja_certificacion(wb.create_sheet(hoja), c, a.logo)
-                ix.append([c["numero"], c["periodo"], c["proveedor"], c["razon"], len(c["filas"]), c["tn"], c["importe"], hoja])
+                ix.append([c["numero"], c["periodo"], c["proveedor"], c["razon"], len(c["filas"]), c["tn"], c["importe"], hoja,
+                           c.get("moneda", "ARS")])
             from openpyxl.styles import Font
-            for r in range(2, ix.max_row + 1):                       # la columna Hoja lleva a cada certificación
+            ult = ix.max_row
+            for r in range(2, ult + 1):                             # la columna Hoja lleva a cada certificación
                 ix.cell(r, 8).hyperlink = "#'" + str(ix.cell(r, 8).value).replace("'", "''") + "'!A1"
                 ix.cell(r, 8).font = Font(color="0563C1", underline="single")
             ix.append([])
-            ix.append(["TOTAL", "", f"{len(certs)} certificaciones", "", sum(len(c["filas"]) for c in certs),
-                       round(sum(c["tn"] for c in certs), 2), round(sum(c["importe"] or 0 for c in certs), 2)])
-            for celda in list(ix[1]) + list(ix[ix.max_row]):
+            monedas = sorted({c.get("moneda", "ARS") for c in certs}) or ["ARS"]
+            for i, mon in enumerate(monedas):                       # un total por moneda: no se mezclan $ y USD
+                ix.append(["TOTAL" + (f" {mon}" if len(monedas) > 1 else ""), "",
+                           f"{len(certs)} certificaciones" if i == 0 else "", "",
+                           sum(len(c["filas"]) for c in certs) if i == 0 else None,
+                           round(sum(c["tn"] for c in certs), 2) if i == 0 else None,
+                           round(sum(c["importe"] or 0 for c in certs if c.get("moneda", "ARS") == mon), 2), "", mon])
+                for celda in ix[ix.max_row]:
+                    celda.font = Font(bold=True)
+            for celda in ix[1]:
                 celda.font = Font(bold=True)
-            for col, ancho in zip("ABCDEFGH", [18, 9, 34, 34, 10, 10, 18, 28]):
+            for col, ancho in zip("ABCDEFGHI", [18, 9, 34, 34, 10, 10, 18, 28, 9]):
                 ix.column_dimensions[col].width = ancho
             for fila in ix.iter_rows(min_row=2):
                 fila[5].number_format = "#,##0.00"
-                fila[6].number_format = cb.MONEDA
+                fila[6].number_format = cb.formato_moneda(fila[8].value or "ARS")
             ix.freeze_panes = "A2"
             wb.save(buf)
             nombre, mt = base + ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -1624,9 +1784,28 @@ def descargar_config():
     with CANDADO:
         if S.app is not None:
             S.app.guardar_estado()
-        if not CONFIG_TRABAJO.exists():
+        vigente = GUARDADO.ruta_vigente()            # si hay cambios pendientes, se baja esa versión (la más nueva)
+        if not vigente.exists():
             raise HTTPException(404, "Todavía no hay config guardado: armá un mes primero.")
-        return FileResponse(CONFIG_TRABAJO, filename="config_proveedores.xlsx")
+        return FileResponse(vigente, filename="config_proveedores.xlsx")
+
+
+@app_web.get("/api/estado_config")
+def estado_config():
+    """¿El config está bloqueado con cambios pendientes? ¿Hay copia de seguridad reciente? (banner de la página)"""
+    return dict(GUARDADO.estado(), respaldo=RESPALDO.estado())
+
+
+@app_web.post("/api/respaldo")
+def respaldo_ahora():
+    """Hace una copia de seguridad ahora (solo administrador)."""
+    try:
+        info = RESPALDO.hacer()
+    except Exception as e:
+        raise HTTPException(500, f"No se pudo hacer la copia de seguridad: {e}")
+    u = _usuario_actual()
+    _registrar_acceso(u["usuario"] if u else "local", "-", f"COPIA DE SEGURIDAD {info['archivo']}")
+    return dict(RESPALDO.estado(), hecha=info)
 
 
 if __name__ == "__main__":
@@ -1666,6 +1845,8 @@ if __name__ == "__main__":
     if USAR_HTTPS:
         crt, key = _preparar_certificado()
         ssl = {"ssl_certfile": str(crt), "ssl_keyfile": str(key)}
+    if USAR_HTTPS:
+        _confiar_en_esta_pc()
     if en_red:
         _guardar_kit()
 
@@ -1675,7 +1856,7 @@ if __name__ == "__main__":
     threading.Thread(target=_retomar, daemon=True).start()
     if "--sin-navegador" not in sys.argv:
         threading.Timer(1.5, lambda: webbrowser.open(f"{esquema}://localhost:{puerto}")).start()
-    print(f"Certificaciones de biomasa → {esquema}://localhost:{puerto}   (para cerrar: cerrá esta ventana)")
+    print(f"Certificaciones de biomasa v{app_web.version} → {esquema}://localhost:{puerto}   (para cerrar: cerrá esta ventana)")
     if en_red:                                   # direcciones para pasarle a las otras PC (no sale a internet)
         import socket
         n_us = len(_leer_usuarios())
@@ -1686,6 +1867,7 @@ if __name__ == "__main__":
         for ip in _ips_locales():
             print(f"   {esquema}://{ip}:{puerto}")
         print(f"Acceso directo para las otras PC: carpeta PARA_LAS_OTRAS_PC (INSTALAR_ACCESO_CERTIFICACIONES.bat)")
+        print(f"🛡 Solo entran las PC de trabajo\\ips_autorizadas.txt: {', '.join(LISTA_BLANCA.redes) or '(vacía: solo esta PC)'}")
         print(f"   o desde la otra PC: {esquema}://{socket.gethostname()}:{puerto}/instalar.bat")
     else:
         print("🔒 Solo accesible desde esta PC.")
